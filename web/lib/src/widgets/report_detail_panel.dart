@@ -3,15 +3,42 @@ import 'package:flutter/material.dart';
 import '../models/reporte.dart';
 import 'map_widget.dart';
 
-class ReportDetailPanel extends StatelessWidget {
+class ReportDetailPanel extends StatefulWidget {
   const ReportDetailPanel({super.key, required this.reporte, required this.onClose});
 
   final Reporte reporte;
   final VoidCallback onClose;
 
   @override
+  State<ReportDetailPanel> createState() => _ReportDetailPanelState();
+}
+
+class _ReportDetailPanelState extends State<ReportDetailPanel> {
+  late EstadoReporte _estado;
+
+  @override
+  void initState() {
+    super.initState();
+    _estado = widget.reporte.estado;
+  }
+
+  @override
+  void didUpdateWidget(covariant ReportDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reporte.id != widget.reporte.id) {
+      _estado = widget.reporte.estado;
+    }
+  }
+
+  void _changeEstado(EstadoReporte nuevoEstado) {
+    setState(() => _estado = nuevoEstado);
+    // TODO: Cuando haya backend, enviar actualización al servidor
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final reporte = widget.reporte;
 
     return Material(
       color: theme.colorScheme.surface,
@@ -31,7 +58,7 @@ class ReportDetailPanel extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: onClose,
+                  onPressed: widget.onClose,
                   icon: const Icon(Icons.close),
                 ),
               ],
@@ -42,6 +69,82 @@ class ReportDetailPanel extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // Estado y tipo de contacto
+                _DetailSection(
+                  title: 'Estado y clasificación',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Estado del reporte con botones para cambiar
+                      Row(
+                        children: [
+                          Text('Estado: ', style: theme.textTheme.bodyMedium),
+                          const SizedBox(width: 8),
+                          _EstadoChip(estado: _estado),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text('Cambiar estado:', style: theme.textTheme.labelMedium),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _EstadoButton(
+                            label: 'Nuevo',
+                            estado: EstadoReporte.nuevo,
+                            currentEstado: _estado,
+                            onPressed: () => _changeEstado(EstadoReporte.nuevo),
+                          ),
+                          _EstadoButton(
+                            label: 'Revisado',
+                            estado: EstadoReporte.revisado,
+                            currentEstado: _estado,
+                            onPressed: () => _changeEstado(EstadoReporte.revisado),
+                          ),
+                          _EstadoButton(
+                            label: 'Escalado',
+                            estado: EstadoReporte.escalado,
+                            currentEstado: _estado,
+                            onPressed: () => _changeEstado(EstadoReporte.escalado),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Tipo de contacto
+                      Row(
+                        children: [
+                          Icon(
+                            reporte.tipoContacto == TipoContacto.anonimo
+                                ? Icons.visibility_off_outlined
+                                : Icons.person_outlined,
+                            size: 18,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            reporte.tipoContacto == TipoContacto.anonimo
+                                ? 'Reporte anónimo'
+                                : 'Con contacto: ${reporte.contacto?.alias ?? 'Sin alias'}',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                      if (reporte.contacto?.celular != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const SizedBox(width: 24),
+                            Icon(Icons.phone_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(reporte.contacto!.celular!, style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Ubicación y mapa
                 _DetailSection(
                   title: 'Ubicación y contexto',
                   child: Column(
@@ -54,18 +157,31 @@ class ReportDetailPanel extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                // Impacto
                 _DetailSection(
                   title: 'Impacto estimado',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Mercurio: ${reporte.mercurioEstimadoKg.toStringAsFixed(1)} kg'),
-                      Text('Daño económico: Bs ${reporte.danoEconomicoEstimado.toStringAsFixed(0)}'),
-                      Text('Riesgo: ${_riskLabel(reporte.nivelRiesgo)}'),
-                      Text('Zona protegida: ${reporte.zonaProtegida.esZonaProtegida ? 'Sí' : 'No'}'),
+                      _ImpactRow(icon: Icons.science_outlined, label: 'Mercurio', value: '${reporte.mercurioEstimadoKg.toStringAsFixed(1)} kg'),
+                      const SizedBox(height: 6),
+                      _ImpactRow(icon: Icons.attach_money, label: 'Daño económico', value: 'Bs ${reporte.danoEconomicoEstimado.toStringAsFixed(0)}'),
+                      const SizedBox(height: 6),
+                      _ImpactRow(icon: Icons.warning_amber, label: 'Riesgo', value: _riskLabel(reporte.nivelRiesgo)),
+                      const SizedBox(height: 6),
+                      _ImpactRow(
+                        icon: Icons.shield_outlined,
+                        label: 'Zona protegida',
+                        value: reporte.zonaProtegida.esZonaProtegida
+                            ? 'Sí — ${reporte.zonaProtegida.nombre ?? ''}'
+                            : 'No',
+                      ),
                     ],
                   ),
                 ),
+
+                // Evidencia
                 _DetailSection(
                   title: 'Evidencia',
                   child: Column(
@@ -85,6 +201,46 @@ class ReportDetailPanel extends StatelessWidget {
                   ),
                 ),
 
+                // Normativa citada
+                if (reporte.normativaCitada.isNotEmpty)
+                  _DetailSection(
+                    title: 'Normativa citada',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: reporte.normativaCitada
+                          .map((n) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.gavel, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                    const SizedBox(width: 8),
+                                    Text(n, style: theme.textTheme.bodyMedium),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+
+                // Botón descargar PDF
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      // TODO: Conectar con backend para generar PDF real
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Generación de PDF disponible cuando se conecte el backend.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.picture_as_pdf),
+                    label: const Text('Descargar reporte PDF'),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -93,6 +249,8 @@ class ReportDetailPanel extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _DetailSection extends StatelessWidget {
   const _DetailSection({required this.title, required this.child});
@@ -118,6 +276,75 @@ class _DetailSection extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _EstadoChip extends StatelessWidget {
+  const _EstadoChip({required this.estado});
+
+  final EstadoReporte estado;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, label) = switch (estado) {
+      EstadoReporte.nuevo => (const Color(0xFF4CAF50), 'Nuevo'),
+      EstadoReporte.revisado => (const Color(0xFFFFA726), 'Revisado'),
+      EstadoReporte.escalado => (const Color(0xFFEF5350), 'Escalado'),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+    );
+  }
+}
+
+class _EstadoButton extends StatelessWidget {
+  const _EstadoButton({required this.label, required this.estado, required this.currentEstado, required this.onPressed});
+
+  final String label;
+  final EstadoReporte estado;
+  final EstadoReporte currentEstado;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = estado == currentEstado;
+    return OutlinedButton(
+      onPressed: isActive ? null : onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        minimumSize: const Size(0, 32),
+        backgroundColor: isActive ? Theme.of(context).colorScheme.primaryContainer : null,
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 12)),
+    );
+  }
+}
+
+class _ImpactRow extends StatelessWidget {
+  const _ImpactRow({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Text('$label: ', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        Flexible(child: Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
+      ],
     );
   }
 }

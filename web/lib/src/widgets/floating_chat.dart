@@ -54,6 +54,11 @@ class _FloatingChatState extends State<FloatingChat> {
     _scrollToBottom();
   }
 
+  void _sendSuggestion(String text) {
+    _controller.text = text;
+    _send();
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -147,6 +152,25 @@ class _FloatingChatState extends State<FloatingChat> {
                           final message = _messages[index];
                           return _ChatBubble(message: message);
                         },
+                      ),
+                    ),
+
+                    // Sugerencias de preguntas rápidas
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _SuggestionChip(label: '¿Zona con más denuncias?', onTap: () => _sendSuggestion('¿Qué zona tuvo más denuncias este mes?')),
+                            const SizedBox(width: 6),
+                            _SuggestionChip(label: 'Mercurio total', onTap: () => _sendSuggestion('¿Cuánto mercurio se ha estimado en total?')),
+                            const SizedBox(width: 6),
+                            _SuggestionChip(label: 'Resumen semanal', onTap: () => _sendSuggestion('Dame un resumen de esta semana')),
+                            const SizedBox(width: 6),
+                            _SuggestionChip(label: 'Alertas activas', onTap: () => _sendSuggestion('¿Cuántas alertas activas hay?')),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -268,4 +292,29 @@ class _ChatMessage {
   final String author;
   final String text;
   final bool isBot;
+}
+
+class _SuggestionChip extends StatelessWidget {
+  const _SuggestionChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+          color: theme.colorScheme.surfaceContainerHighest,
+        ),
+        child: Text(label, style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+      ),
+    );
+  }
 }

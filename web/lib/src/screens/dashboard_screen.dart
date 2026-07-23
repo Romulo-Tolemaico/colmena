@@ -57,6 +57,13 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
 
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+          // Filtros
+          SliverToBoxAdapter(
+            child: _FilterBar(reportes: reportes),
+          ),
+
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
           // Métricas en tarjetas
@@ -146,6 +153,7 @@ class _MetricsRow extends StatelessWidget {
     final confirmados = reportes.where((r) => r.estado == EstadoReporte.escalado).length;
     final riosAfectados = metricas?.zonasProtegidasAfectadas ?? 0;
     final comunidades = reportes.map((r) => r.zonaProtegida.nombre).whereType<String>().toSet().length;
+    final mercurio = metricas?.mercurioAcumuladoKg ?? reportes.fold<double>(0.0, (sum, r) => sum + r.mercurioEstimadoKg);
 
     return Wrap(
       spacing: 12,
@@ -157,6 +165,12 @@ class _MetricsRow extends StatelessWidget {
           icon: Icons.flag_outlined,
           color: const Color(0xFF4CAF50),
           subtitle: '↑ 23% vs. mes anterior',
+        ),
+        _MetricCard(
+          title: 'Mercurio acumulado',
+          value: '${mercurio.toStringAsFixed(1)} kg',
+          icon: Icons.science_outlined,
+          color: const Color(0xFFE53935),
         ),
         _MetricCard(
           title: 'En verificación',
@@ -171,9 +185,9 @@ class _MetricsRow extends StatelessWidget {
           color: const Color(0xFFEF5350),
         ),
         _MetricCard(
-          title: 'Ríos afectados',
+          title: 'Zonas protegidas',
           value: riosAfectados.toString(),
-          icon: Icons.water_outlined,
+          icon: Icons.shield_outlined,
           color: const Color(0xFF42A5F5),
         ),
         _MetricCard(
@@ -615,6 +629,133 @@ class _MiniChart extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Filtros
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterBar extends StatefulWidget {
+  const _FilterBar({required this.reportes});
+
+  final List<Reporte> reportes;
+
+  @override
+  State<_FilterBar> createState() => _FilterBarState();
+}
+
+class _FilterBarState extends State<_FilterBar> {
+  NivelRiesgo? _selectedRisk;
+  String? _selectedZona;
+  DateTimeRange? _selectedDateRange;
+
+  List<String> get _zonas {
+    return widget.reportes
+        .map((r) => r.zonaProtegida.nombre)
+        .whereType<String>()
+        .toSet()
+        .toList()
+      ..sort();
+  }
+
+  void _pickDateRange() async {
+    final result = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
+      initialDateRange: _selectedDateRange,
+    );
+    if (result != null) {
+      setState(() => _selectedDateRange = result);
+    }
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedRisk = null;
+      _selectedZona = null;
+      _selectedDateRange = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasFilters = _selectedRisk != null || _selectedZona != null || _selectedDateRange != null;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Icon(Icons.filter_list, size: 20, color: theme.colorScheme.onSurfaceVariant),
+            Text('Filtros:', style: theme.textTheme.labelLarge),
+
+            // Filtro por fecha
+            ActionChip(
+              avatar: const Icon(Icons.calendar_today, size: 16),
+              label: Text(_selectedDateRange != null
+                  ? '${_selectedDateRange!.start.day}/${_selectedDateRange!.start.month} - ${_selectedDateRange!.end.day}/${_selectedDateRange!.end.month}'
+                  : 'Fecha'),
+              onPressed: _pickDateRange,
+            ),
+
+            // Filtro por zona
+            DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedZona,
+                hint: const Text('Zona'),
+                isDense: true,
+                borderRadius: BorderRadius.circular(8),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todas las zonas')),
+                  ..._zonas.map((zona) => DropdownMenuItem(value: zona, child: Text(zona))),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedZona = value);
+                  FocusScope.of(context).unfocus();
+                },
+              ),
+            ),
+
+            // Filtro por riesgo
+            DropdownButtonHideUnderline(
+              child: DropdownButton<NivelRiesgo>(
+                value: _selectedRisk,
+                hint: const Text('Riesgo'),
+                isDense: true,
+                borderRadius: BorderRadius.circular(8),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Todos')),
+                  DropdownMenuItem(value: NivelRiesgo.bajo, child: Text('Bajo')),
+                  DropdownMenuItem(value: NivelRiesgo.medio, child: Text('Medio')),
+                  DropdownMenuItem(value: NivelRiesgo.alto, child: Text('Alto')),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedRisk = value);
+                  FocusScope.of(context).unfocus();
+                },
+              ),
+            ),
+
+            // Limpiar filtros
+            if (hasFilters)
+              TextButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.clear, size: 16),
+                label: const Text('Limpiar'),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
