@@ -132,10 +132,16 @@ class HomeScreen extends StatelessWidget {
           child: FloatingActionButton.extended(
             onPressed: () async {
               // Flujo: Cámara → Estimación → Resultado
-              final photos = await Navigator.of(context).push<List<String>>(
+              final cameraResult = await Navigator.of(context).push<Map<String, dynamic>>(
                 MaterialPageRoute(builder: (_) => const CameraScreen()),
               );
-              if (photos == null || photos.isEmpty || !context.mounted) return;
+              if (cameraResult == null || !context.mounted) return;
+
+              final photos = (cameraResult['photos'] as List<dynamic>?)?.cast<String>() ?? [];
+              if (photos.isEmpty) return;
+
+              final lat = cameraResult['lat'] as double?;
+              final lng = cameraResult['lng'] as double?;
 
               final estimation = await Navigator.of(context).push<Map<String, dynamic>>(
                 MaterialPageRoute(builder: (_) => EstimationScreen(fotos: photos)),
@@ -146,7 +152,7 @@ class HomeScreen extends StatelessWidget {
               final mockResult = Registro(
                 id: 'REG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                 fecha: DateTime.now(),
-                ubicacion: const Ubicacion(lat: -11.4162, lng: -67.5441),
+                ubicacion: Ubicacion(lat: lat ?? -11.4162, lng: lng ?? -67.5441),
                 fotos: photos,
                 tamanoDraga: estimation['tamanoDraga'] as TamanoDraga? ?? TamanoDraga.mediana,
                 tiempoOperando: estimation['tiempoOperando'] as TiempoOperando? ?? TiempoOperando.variosDias,

@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
 /// Pantalla de captura de evidencia.
 /// Permite tomar fotos con la cámara del dispositivo o elegir de la galería.
-/// Muestra GPS automático y preview de las fotos tomadas.
+/// Obtiene GPS real del dispositivo y muestra la ubicación.
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
 
@@ -17,6 +18,76 @@ class _CameraScreenState extends State<CameraScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _photos = [];
 
+  // GPS
+  Position? _position;
+  bool _loadingGps = true;
+  String? _gpsError;
+
+  @override
+  void initState() {
+    super.initState();
+    _obtenerUbicacion();
+  }
+
+  Future<void> _obtenerUbicacion() async {
+    setState(() {
+      _loadingGps = true;
+      _gpsError = null;
+    });
+
+    try {
+      // Verificar si el servicio de ubicación está habilitado
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _gpsError = 'Servicio de ubicación desactivado';
+          _loadingGps = false;
+        });
+        return;
+      }
+
+      // Verificar permisos
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _gpsError = 'Permiso de ubicación denegado';
+            _loadingGps = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _gpsError = 'Permiso denegado permanentemente';
+          _loadingGps = false;
+        });
+        return;
+      }
+
+      // Obtener posición
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      if (mounted) {
+        setState(() {
+          _position = position;
+          _loadingGps = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _gpsError = 'Error al obtener ubicación';
+          _loadingGps = false;
+        });
+      }
+    }
+  }
+
   Future<void> _takePhoto() async {
     try {
       final photo = await _picker.pickImage(
@@ -24,13 +95,16 @@ class _CameraScreenState extends State<CameraScreen> {
         imageQuality: 85,
         maxWidth: 1920,
       );
-      if (photo != null) {
+      if (photo != null && mounted) {
         setState(() => _photos.add(photo));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al abrir la cámara: $e'), behavior: SnackBarBehavior.floating),
+          const SnackBar(
+            content: Text('No se pudo abrir la cámara. Intenta reiniciar la app.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -42,13 +116,16 @@ class _CameraScreenState extends State<CameraScreen> {
         imageQuality: 85,
         maxWidth: 1920,
       );
-      if (images.isNotEmpty) {
+      if (images.isNotEmpty && mounted) {
         setState(() => _photos.addAll(images));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al abrir la galería: $e'), behavior: SnackBarBehavior.floating),
+          const SnackBar(
+            content: Text('No se pudo abrir la galería. Intenta reiniciar la app.'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -60,7 +137,12 @@ class _CameraScreenState extends State<CameraScreen> {
 
   void _continue() {
     if (_photos.isEmpty) return;
-    Navigator.of(context).pop(_photos.map((f) => f.path).toList());
+    // Retornar fotos y posición GPS
+    Navigator.of(context).pop({
+      'photos': _photos.map((f) => f.path).toList(),
+      'lat': _position?.latitude,
+      'lng': _position?.longitude,
+    });
   }
 
   @override
@@ -114,33 +196,12 @@ class _CameraScreenState extends State<CameraScreen> {
 
             const SizedBox(height: 16),
 
-            // GPS automático
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.location_on, color: Colors.green, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    'GPS: -11.4162, -67.5441',
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text('Detectado', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
+            // GPS real
+            _GpsCard(
+              position: _position,
+              loading: _loadingGps,
+              error: _gpsError,
+              onRetry: _obtenerUbicacion,
             ),
 
             const SizedBox(height: 20),
@@ -176,13 +237,14 @@ class _CameraScreenState extends State<CameraScreen> {
               Row(
                 children: [
                   Text(
-                    '${_photos.length} foto${_photos.length > 1 ? 's' : ''} seleccionada${_photos.length > 1 ? 's' : ''}',
+                    '${_photos.length} foto${_photos.length > 1 ? 's' : ''}',
                     style: theme.textTheme.titleSmall,
                   ),
                   const Spacer(),
-                  TextButton(
+                  TextButton.icon(
                     onPressed: _takePhoto,
-                    child: const Text('+ Agregar más'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Más'),
                   ),
                 ],
               ),
@@ -232,6 +294,145 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GPS Card con estado visual claro
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GpsCard extends StatelessWidget {
+  const _GpsCard({required this.position, required this.loading, required this.error, required this.onRetry});
+
+  final Position? position;
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (loading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            const SizedBox(width: 14),
+            Text('Obteniendo ubicación GPS...', style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.location_off, color: Colors.red, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(error!, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red.shade700)),
+                  Text('El reporte se guardará sin ubicación exacta', style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 20),
+              tooltip: 'Reintentar',
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Ubicación obtenida
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.green, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Ubicación detectada',
+                style: theme.textTheme.titleSmall?.copyWith(color: Colors.green.shade700, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('GPS activo', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const SizedBox(width: 32),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lat: ${position!.latitude.toStringAsFixed(6)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+                    ),
+                    Text(
+                      'Lng: ${position!.longitude.toStringAsFixed(6)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Precisión',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  Text(
+                    '±${position!.accuracy.toStringAsFixed(0)} m',
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CaptureButton extends StatelessWidget {
   const _CaptureButton({required this.icon, required this.label, required this.onTap});
