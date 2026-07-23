@@ -328,154 +328,156 @@ class _SideInfoPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      children: [
-        // Evento destacado
-        if (reportes.isNotEmpty)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Evento destacado', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF5350).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _estadoLabel(reportes.first.estado),
-                          style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFEF5350)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    reportes.first.notas ?? 'Actividad detectada en zona de monitoreo',
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    reportes.first.zonaProtegida.nombre ?? 'Zona sin identificar',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Text(_formatDate(reportes.first.fecha), style: theme.textTheme.bodySmall),
-                      const SizedBox(width: 12),
-                      Icon(Icons.location_on_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          '${reportes.first.ubicacion.lat.toStringAsFixed(2)}°S, ${reportes.first.ubicacion.lng.abs().toStringAsFixed(2)}°W',
-                          style: theme.textTheme.bodySmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        const SizedBox(height: 12),
-
-        // Gráfico de actividad por mes
-        if (metricas != null)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Eventos por mes', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 100,
-                    child: _MiniChart(data: metricas!.denunciasPorMes),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        const SizedBox(height: 12),
-
-        // Actividad reciente
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Evento destacado
+          if (reportes.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Actividad reciente', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
-                      child: const Text('Ver todos', style: TextStyle(fontSize: 12)),
+                    Row(
+                      children: [
+                        Text('Evento destacado', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF5350).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _estadoLabel(reportes.first.estado),
+                            style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFEF5350)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      reportes.first.notas ?? 'Actividad detectada en zona de monitoreo',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      reportes.first.zonaProtegida.nombre ?? 'Zona sin identificar',
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text(_formatDate(reportes.first.fecha), style: theme.textTheme.bodySmall),
+                        const SizedBox(width: 12),
+                        Icon(Icons.location_on_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            '${reportes.first.ubicacion.lat.toStringAsFixed(2)}°S, ${reportes.first.ubicacion.lng.abs().toStringAsFixed(2)}°W',
+                            style: theme.textTheme.bodySmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                ...reportes.take(3).map((reporte) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () => onOpenReporte(reporte.id),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: _colorForEstado(reporte.estado),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    reporte.notas ?? 'Reporte ${reporte.id}',
-                                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    reporte.zonaProtegida.nombre ?? 'Sin zona',
-                                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              _formatTime(reporte.fecha),
-                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
+              ),
+            ),
+          const SizedBox(height: 12),
+
+          // Gráfico de actividad por mes
+          if (metricas != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Eventos por mes', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 100,
+                      child: _MiniChart(data: metricas!.denunciasPorMes),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+
+          // Actividad reciente
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Actividad reciente', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                        child: const Text('Ver todos', style: TextStyle(fontSize: 12)),
                       ),
-                    )),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ...reportes.take(3).map((reporte) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () => onOpenReporte(reporte.id),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _colorForEstado(reporte.estado),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      reporte.notas ?? 'Reporte ${reporte.id}',
+                                      style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      reporte.zonaProtegida.nombre ?? 'Sin zona',
+                                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                _formatTime(reporte.fecha),
+                                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

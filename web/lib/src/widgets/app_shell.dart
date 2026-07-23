@@ -203,35 +203,47 @@ class _Sidebar extends StatelessWidget {
         children: [
           // Logo y toggle
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: colorScheme.primary,
-                  child: Text('C', style: textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-                if (!sidebarCollapsed) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Colmena', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                        Text('Monitoreo', style: textTheme.bodySmall),
-                      ],
-                    ),
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+            child: sidebarCollapsed
+                ? Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: colorScheme.primary,
+                        child: Text('C', style: textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 8),
+                      IconButton(
+                        onPressed: onToggleSidebar,
+                        icon: const Icon(Icons.menu),
+                        tooltip: 'Expandir menú',
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: colorScheme.primary,
+                        child: Text('C', style: textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Colmena', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                            Text('Monitoreo', style: textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: onToggleSidebar,
+                        icon: const Icon(Icons.chevron_left),
+                        tooltip: 'Colapsar menú',
+                      ),
+                    ],
                   ),
-                ],
-                IconButton(
-                  onPressed: onToggleSidebar,
-                  icon: Icon(sidebarCollapsed ? Icons.chevron_right : Icons.chevron_left, size: 20),
-                  iconSize: 20,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: EdgeInsets.zero,
-                ),
-              ],
-            ),
           ),
 
           const SizedBox(height: 8),
