@@ -51,14 +51,14 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(
               flex: 5,
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF1B2A1B),
-                      const Color(0xFF2D4A2D),
-                      const Color(0xFF1A3A2A),
+                      Color(0xFF1B2A1B),
+                      Color(0xFF2D4A2D),
+                      Color(0xFF1A3A2A),
                     ],
                   ),
                 ),
@@ -122,17 +122,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 48),
-                            _FeatureItem(
+                            const _FeatureItem(
                               icon: Icons.map_outlined,
                               text: 'Mapa interactivo de eventos',
                             ),
                             const SizedBox(height: 16),
-                            _FeatureItem(
+                            const _FeatureItem(
                               icon: Icons.warning_amber_outlined,
                               text: 'Alertas en tiempo real',
                             ),
                             const SizedBox(height: 16),
-                            _FeatureItem(
+                            const _FeatureItem(
                               icon: Icons.people_outline,
                               text: 'Red comunitaria de monitoreo',
                             ),

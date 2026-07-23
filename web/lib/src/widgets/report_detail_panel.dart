@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/reporte.dart';
-import 'chat_panel.dart';
 import 'map_widget.dart';
 
 class ReportDetailPanel extends StatelessWidget {
@@ -85,10 +84,7 @@ class ReportDetailPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                _DetailSection(
-                  title: 'Asistente y seguimiento',
-                  child: ChatPanel(reporte: reporte),
-                ),
+
               ],
             ),
           ),

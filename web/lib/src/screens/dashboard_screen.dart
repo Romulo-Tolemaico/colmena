@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/metricas_dashboard.dart';
 import '../models/reporte.dart';
+import '../widgets/map_widget.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -24,93 +25,266 @@ class DashboardScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: CustomScrollView(
         slivers: [
+          // Encabezado
           SliverToBoxAdapter(
-            child: _DashboardHero(loading: loading, total: metricas?.totalDenuncias ?? reportes.length),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 18)),
-          if (loading || metricas == null)
-            const SliverToBoxAdapter(child: LinearProgressIndicator()),
-          if (!loading && metricas != null)
-            SliverToBoxAdapter(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final cardWidth = constraints.maxWidth >= 1100 ? (constraints.maxWidth - 36) / 4 : (constraints.maxWidth - 12) / 2;
-                  return Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _MetricCard(title: 'Total de denuncias', value: metricas!.totalDenuncias.toString(), width: cardWidth),
-                      _MetricCard(title: 'Mercurio acumulado', value: '${metricas!.mercurioAcumuladoKg.toStringAsFixed(1)} kg', width: cardWidth),
-                      _MetricCard(title: 'Zonas protegidas', value: metricas!.zonasProtegidasAfectadas.toString(), width: cardWidth),
-                      _MetricCard(title: 'Anónimas', value: '${metricas!.porcentajeAnonimas}%', width: cardWidth),
+                      Text(
+                        'Eventos de minería ilegal en ríos',
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Monitorea y reporta actividades ilegales que afectan nuestros ríos',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
                     ],
-                  );
-                },
-              ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nuevo reporte'),
+                ),
+              ],
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 18)),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Métricas en tarjetas
+          SliverToBoxAdapter(
+            child: _MetricsRow(metricas: metricas, reportes: reportes, loading: loading),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Mapa central + panel lateral
           SliverToBoxAdapter(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 1000;
-                return isWide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _ActivityChart(metricas: metricas)),
-                          const SizedBox(width: 16),
-                          Expanded(child: _RecentActivityCard(reportes: reportes, onOpenReporte: onOpenReporte, selectedReporteId: selectedReporteId)),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          _ActivityChart(metricas: metricas),
-                          const SizedBox(height: 16),
-                          _RecentActivityCard(reportes: reportes, onOpenReporte: onOpenReporte, selectedReporteId: selectedReporteId),
-                        ],
-                      );
+                final isWide = constraints.maxWidth >= 900;
+                if (isWide) {
+                  return SizedBox(
+                    height: 480,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: _MapSection(
+                            reportes: reportes,
+                            onMarkerTap: onOpenReporte,
+                            selectedReporteId: selectedReporteId,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 3,
+                          child: _SideInfoPanel(reportes: reportes, metricas: metricas, onOpenReporte: onOpenReporte),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 360,
+                      child: _MapSection(
+                        reportes: reportes,
+                        onMarkerTap: onOpenReporte,
+                        selectedReporteId: selectedReporteId,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _SideInfoPanel(reportes: reportes, metricas: metricas, onOpenReporte: onOpenReporte),
+                  ],
+                );
               },
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 18)),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+          // Alertas activas al fondo
           SliverToBoxAdapter(
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Señales críticas', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 12),
-                    ...reportes.take(3).map((reporte) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
-                            Icon(_iconForRisk(reporte.nivelRiesgo), color: _colorForRisk(theme, reporte.nivelRiesgo)),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(reporte.id, style: theme.textTheme.titleSmall),
-                                  Text(reporte.zonaProtegida.nombre ?? 'Sin zona protegida', style: theme.textTheme.bodySmall),
-                                ],
-                              ),
-                            ),
-                            FilledButton.tonal(
-                              onPressed: () => onOpenReporte(reporte.id),
-                              child: const Text('Ver'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+            child: _AlertasBanner(reportes: reportes, onOpenReporte: onOpenReporte),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Métricas en fila
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MetricsRow extends StatelessWidget {
+  const _MetricsRow({required this.metricas, required this.reportes, required this.loading});
+
+  final MetricasDashboard? metricas;
+  final List<Reporte> reportes;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const LinearProgressIndicator();
+
+    final total = metricas?.totalDenuncias ?? reportes.length;
+    final enVerificacion = reportes.where((r) => r.estado == EstadoReporte.revisado).length;
+    final confirmados = reportes.where((r) => r.estado == EstadoReporte.escalado).length;
+    final riosAfectados = metricas?.zonasProtegidasAfectadas ?? 0;
+    final comunidades = reportes.map((r) => r.zonaProtegida.nombre).whereType<String>().toSet().length;
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        _MetricCard(
+          title: 'Eventos reportados',
+          value: total.toString(),
+          icon: Icons.flag_outlined,
+          color: const Color(0xFF4CAF50),
+          subtitle: '↑ 23% vs. mes anterior',
+        ),
+        _MetricCard(
+          title: 'En verificación',
+          value: enVerificacion.toString(),
+          icon: Icons.pending_outlined,
+          color: const Color(0xFFFFA726),
+        ),
+        _MetricCard(
+          title: 'Confirmados',
+          value: confirmados.toString(),
+          icon: Icons.check_circle_outline,
+          color: const Color(0xFFEF5350),
+        ),
+        _MetricCard(
+          title: 'Ríos afectados',
+          value: riosAfectados.toString(),
+          icon: Icons.water_outlined,
+          color: const Color(0xFF42A5F5),
+        ),
+        _MetricCard(
+          title: 'Comunidades activas',
+          value: comunidades.toString(),
+          icon: Icons.groups_outlined,
+          color: const Color(0xFF7E57C2),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.subtitle,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 195,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(title, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ),
+                  Icon(icon, size: 18, color: color),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(value, style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(subtitle!, style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF4CAF50), fontSize: 11)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sección del mapa
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MapSection extends StatelessWidget {
+  const _MapSection({required this.reportes, required this.onMarkerTap, required this.selectedReporteId});
+
+  final List<Reporte> reportes;
+  final ValueChanged<String> onMarkerTap;
+  final String? selectedReporteId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: MapWidget(
+              reportes: reportes,
+              onMarkerTap: onMarkerTap,
+              selectedReporteId: selectedReporteId,
+            ),
+          ),
+          // Leyenda superpuesta
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withOpacity(0.92),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Leyenda', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _LegendItem(color: const Color(0xFFEF5350), label: 'Confirmado'),
+                  const SizedBox(height: 4),
+                  _LegendItem(color: const Color(0xFFFFA726), label: 'En verificación'),
+                  const SizedBox(height: 4),
+                  _LegendItem(color: const Color(0xFF4CAF50), label: 'Reportado'),
+                ],
               ),
             ),
           ),
@@ -120,125 +294,271 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.title, required this.value, required this.width});
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
 
-  final String title;
-  final String value;
-  final double width;
+  final Color color;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width.clamp(180, 320).toDouble(),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [Text(title), const SizedBox(height: 8), Text(value, style: Theme.of(context).textTheme.headlineSmall)],
-          ),
-        ),
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
     );
   }
 }
 
-class _DashboardHero extends StatelessWidget {
-  const _DashboardHero({required this.loading, required this.total});
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel lateral de info (evento destacado + actividad por mes + actividad reciente)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  final bool loading;
-  final int total;
+class _SideInfoPanel extends StatelessWidget {
+  const _SideInfoPanel({required this.reportes, required this.metricas, required this.onOpenReporte});
+
+  final List<Reporte> reportes;
+  final MetricasDashboard? metricas;
+  final ValueChanged<String> onOpenReporte;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [theme.colorScheme.primaryContainer, theme.colorScheme.surface],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Expanded(
+
+    return Column(
+      children: [
+        // Evento destacado
+        if (reportes.isNotEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Resumen operativo', style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  Text('Monitoreo ambiental y denuncias en tiempo casi real', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text('Evento destacado', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF5350).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _estadoLabel(reportes.first.estado),
+                          style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFEF5350)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Text(
-                    loading ? 'Cargando métricas...' : 'Se están consolidando $total reportes para el tablero principal.',
-                    style: theme.textTheme.bodyMedium,
+                    reportes.first.notas ?? 'Actividad detectada en zona de monitoreo',
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    reportes.first.zonaProtegida.nombre ?? 'Zona sin identificar',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Text(_formatDate(reportes.first.fecha), style: theme.textTheme.bodySmall),
+                      const SizedBox(width: 12),
+                      Icon(Icons.location_on_outlined, size: 13, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '${reportes.first.ubicacion.lat.toStringAsFixed(2)}°S, ${reportes.first.ubicacion.lng.abs().toStringAsFixed(2)}°W',
+                          style: theme.textTheme.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Icon(Icons.hive_outlined, size: 64, color: theme.colorScheme.primary),
-          ],
+          ),
+        const SizedBox(height: 12),
+
+        // Gráfico de actividad por mes
+        if (metricas != null)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Eventos por mes', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 100,
+                    child: _MiniChart(data: metricas!.denunciasPorMes),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
+
+        // Actividad reciente
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Actividad reciente', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {},
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                      child: const Text('Ver todos', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...reportes.take(3).map((reporte) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => onOpenReporte(reporte.id),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: _colorForEstado(reporte.estado),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    reporte.notas ?? 'Reporte ${reporte.id}',
+                                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    reporte.zonaProtegida.nombre ?? 'Sin zona',
+                                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              _formatTime(reporte.fecha),
+                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _ActivityChart extends StatelessWidget {
-  const _ActivityChart({required this.metricas});
+// ─────────────────────────────────────────────────────────────────────────────
+// Banner de alertas activas
+// ─────────────────────────────────────────────────────────────────────────────
 
-  final MetricasDashboard? metricas;
+class _AlertasBanner extends StatelessWidget {
+  const _AlertasBanner({required this.reportes, required this.onOpenReporte});
+
+  final List<Reporte> reportes;
+  final ValueChanged<String> onOpenReporte;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final data = metricas?.denunciasPorMes ?? const <SerieMensual>[];
-    final maxValue = data.isEmpty ? 1 : data.map((item) => item.cantidad).reduce((a, b) => a > b ? a : b);
+    final alertas = reportes.where((r) => r.nivelRiesgo == NivelRiesgo.alto).take(3).toList();
+
+    if (alertas.isEmpty) return const SizedBox.shrink();
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Actividad por mes', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 220,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: data.map((serie) {
-                  final height = 180 * (serie.cantidad / maxValue);
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(serie.cantidad.toString(), style: theme.textTheme.labelLarge),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: height,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(serie.mes, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
-                        ],
-                      ),
+            Row(
+              children: [
+                Text('Alertas activas', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {},
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                  child: const Text('Ver todas', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: alertas.map((alerta) {
+                return InkWell(
+                  onTap: () => onOpenReporte(alerta.id),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 280,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
                     ),
-                  );
-                }).toList(),
-              ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: const Color(0xFFEF5350).withOpacity(0.15),
+                          child: const Icon(Icons.warning_amber, size: 16, color: Color(0xFFEF5350)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                alerta.notas ?? 'Alerta en ${alerta.zonaProtegida.nombre ?? alerta.id}',
+                                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Nivel de alerta: Alto',
+                                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11, color: const Color(0xFFEF5350)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -247,87 +567,89 @@ class _ActivityChart extends StatelessWidget {
   }
 }
 
-class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard({required this.reportes, required this.onOpenReporte, required this.selectedReporteId});
+// ─────────────────────────────────────────────────────────────────────────────
+// Mini gráfico de barras
+// ─────────────────────────────────────────────────────────────────────────────
 
-  final List<Reporte> reportes;
-  final ValueChanged<String> onOpenReporte;
-  final String? selectedReporteId;
+class _MiniChart extends StatelessWidget {
+  const _MiniChart({required this.data});
+
+  final List<SerieMensual> data;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (data.isEmpty) return const SizedBox.shrink();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Últimos reportes', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            ...reportes.map((reporte) {
-              final selected = reporte.id == selectedReporteId;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => onOpenReporte(reporte.id),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: selected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: selected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant),
-                    ),
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: _colorForRisk(theme, reporte.nivelRiesgo),
-                          child: Icon(_iconForRisk(reporte.nivelRiesgo), color: Colors.white, size: 18),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(reporte.id, style: theme.textTheme.titleMedium),
-                              Text(reporte.zonaProtegida.nombre ?? 'Sin zona protegida', style: theme.textTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right),
-                      ],
-                    ),
+    final maxVal = data.map((d) => d.cantidad).reduce((a, b) => a > b ? a : b);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: data.map((serie) {
+        final ratio = maxVal == 0 ? 0.0 : serie.cantidad / maxVal;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(serie.cantidad.toString(), style: theme.textTheme.labelSmall),
+                const SizedBox(height: 4),
+                Container(
+                  height: 60 * ratio,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                   ),
                 ),
-              );
-            }),
-          ],
-        ),
-      ),
+                const SizedBox(height: 4),
+                Text(
+                  serie.mes.split(' ').first,
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
 
-Color _colorForRisk(ThemeData theme, NivelRiesgo risk) {
-  switch (risk) {
-    case NivelRiesgo.bajo:
-      return theme.colorScheme.tertiary;
-    case NivelRiesgo.medio:
-      return theme.colorScheme.secondary;
-    case NivelRiesgo.alto:
-      return theme.colorScheme.error;
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+String _estadoLabel(EstadoReporte estado) {
+  return switch (estado) {
+    EstadoReporte.nuevo => 'Nuevo',
+    EstadoReporte.revisado => 'En verificación',
+    EstadoReporte.escalado => 'Confirmado',
+  };
 }
 
-IconData _iconForRisk(NivelRiesgo risk) {
-  switch (risk) {
-    case NivelRiesgo.bajo:
-      return Icons.info_outline;
-    case NivelRiesgo.medio:
-      return Icons.report_outlined;
-    case NivelRiesgo.alto:
-      return Icons.warning_amber_outlined;
+Color _colorForEstado(EstadoReporte estado) {
+  return switch (estado) {
+    EstadoReporte.nuevo => const Color(0xFF4CAF50),
+    EstadoReporte.revisado => const Color(0xFFFFA726),
+    EstadoReporte.escalado => const Color(0xFFEF5350),
+  };
+}
+
+String _formatDate(DateTime date) {
+  final months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  return '${date.day} ${months[date.month - 1]} ${date.year} - ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
+
+String _formatTime(DateTime date) {
+  final now = DateTime.now();
+  final diff = now.difference(date);
+  if (diff.inHours < 24) {
+    return 'Hoy, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
+  if (diff.inDays == 1) {
+    return 'Ayer, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+  return '${date.day}/${date.month.toString().padLeft(2, '0')}';
 }

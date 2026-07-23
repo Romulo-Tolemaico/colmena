@@ -29,31 +29,36 @@ class HistorialScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Expanded(
             child: Card(
-              child: SingleChildScrollView(
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('ID')),
-                    DataColumn(label: Text('Fecha')),
-                    DataColumn(label: Text('Riesgo')),
-                    DataColumn(label: Text('Zona')),
-                    DataColumn(label: Text('Acción')),
-                  ],
-                  rows: reportes.map((reporte) {
-                    return DataRow(
-                      cells: [
-                        DataCell(Text(reporte.id)),
-                        DataCell(Text(_formatDate(reporte.fecha))),
-                        DataCell(_RiskLabel(risk: reporte.nivelRiesgo)),
-                        DataCell(Text(reporte.zonaProtegida.nombre ?? 'Sin zona protegida')),
-                        DataCell(
-                          FilledButton.tonal(
-                            onPressed: () => onOpenReporte(reporte.id),
-                            child: const Text('Abrir'),
+              child: SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    columnSpacing: 24,
+                    horizontalMargin: 16,
+                    columns: const [
+                      DataColumn(label: Text('ID')),
+                      DataColumn(label: Text('Fecha')),
+                      DataColumn(label: Text('Riesgo')),
+                      DataColumn(label: Text('Zona')),
+                      DataColumn(label: Text('Acción')),
+                    ],
+                    rows: reportes.map((reporte) {
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(reporte.id)),
+                          DataCell(Text(_formatDate(reporte.fecha))),
+                          DataCell(_RiskLabel(risk: reporte.nivelRiesgo)),
+                          DataCell(Text(reporte.zonaProtegida.nombre ?? 'Sin zona protegida')),
+                          DataCell(
+                            FilledButton.tonal(
+                              onPressed: () => onOpenReporte(reporte.id),
+                              child: const Text('Abrir'),
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+                        ],
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ),
