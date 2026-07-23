@@ -27,7 +27,6 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   void _continue() {
-    // TODO: Navegar a pantalla de estimación pasando las fotos
     Navigator.of(context).pop(_photos);
   }
 

@@ -4,6 +4,10 @@ import '../data/mock_registros.dart';
 import '../models/registro.dart';
 import '../widgets/connection_indicator.dart';
 import '../widgets/sync_status_badge.dart';
+import 'camera_screen.dart';
+import 'estimation_screen.dart';
+import 'record_detail_screen.dart';
+import 'report_result_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -105,7 +109,11 @@ class HomeScreen extends StatelessWidget {
                           return _RegistroCard(
                             registro: registro,
                             onTap: () {
-                              // TODO: Navegar a detalle del registro
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => RecordDetailScreen(registro: registro),
+                                ),
+                              );
                             },
                           );
                         },
@@ -122,8 +130,45 @@ class HomeScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: FloatingActionButton.extended(
-            onPressed: () {
-              // TODO: Navegar a pantalla de cámara
+            onPressed: () async {
+              // Flujo: Cámara → Estimación → Resultado
+              final photos = await Navigator.of(context).push<List<String>>(
+                MaterialPageRoute(builder: (_) => const CameraScreen()),
+              );
+              if (photos == null || photos.isEmpty || !context.mounted) return;
+
+              final estimation = await Navigator.of(context).push<Map<String, dynamic>>(
+                MaterialPageRoute(builder: (_) => EstimationScreen(fotos: photos)),
+              );
+              if (estimation == null || !context.mounted) return;
+
+              // Crear registro mock con resultado simulado del agente
+              final mockResult = Registro(
+                id: 'REG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                fecha: DateTime.now(),
+                ubicacion: const Ubicacion(lat: -11.4162, lng: -67.5441),
+                fotos: photos,
+                tamanoDraga: estimation['tamanoDraga'] as TamanoDraga? ?? TamanoDraga.mediana,
+                tiempoOperando: estimation['tiempoOperando'] as TiempoOperando? ?? TiempoOperando.variosDias,
+                indicadores: IndicadoresVisibles(
+                  personasVisibles: estimation['personasVisibles'] as bool? ?? false,
+                  motobombasVisibles: estimation['motobombasVisibles'] as bool? ?? false,
+                ),
+                estadoSync: EstadoSync.pendiente,
+                notas: estimation['notas'] as String?,
+                // Simulación de resultado del agente
+                mercurioEstimadoKg: 14.7,
+                zonaProtegida: const ZonaProtegida(esZonaProtegida: true, nombre: 'Reserva Manuripi'),
+                normativaCitada: const ['Ley 1333', 'D.S. 28592'],
+                danoEconomicoEstimado: 52000,
+                nivelRiesgo: NivelRiesgo.alto,
+                estadoReporte: EstadoReporte.nuevo,
+              );
+
+              if (!context.mounted) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => ReportResultScreen(registro: mockResult)),
+              );
             },
             icon: const Icon(Icons.camera_alt_outlined, size: 24),
             label: const Text('Nuevo registro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
