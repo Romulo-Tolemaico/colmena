@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'src/app.dart';
 import 'src/data/api_service.dart';
+import 'src/data/session_service.dart';
 import 'src/models/metricas_dashboard.dart';
 import 'src/models/reporte.dart';
 import 'src/screens/alertas_screen.dart';
@@ -12,7 +13,7 @@ import 'src/screens/register_screen.dart';
 import 'src/widgets/app_shell.dart';
 import 'src/widgets/report_detail_panel.dart';
 
-enum AuthState { login, register, authenticated }
+enum AuthState { loading, login, register, authenticated }
 
 class ColmenaApp extends StatefulWidget {
   const ColmenaApp({super.key});
@@ -23,6 +24,8 @@ class ColmenaApp extends StatefulWidget {
 
 class _ColmenaAppState extends State<ColmenaApp> {
   final ApiService _api = ApiService();
+  final SessionService _session = SessionService();
+
   List<Reporte> _reportes = [];
   MetricasDashboard? _metricas;
   bool _loading = true;
@@ -32,13 +35,37 @@ class _ColmenaAppState extends State<ColmenaApp> {
   AppView _view = AppView.dashboard;
   String? _selectedReporteId;
 
-  AuthState _authState = AuthState.login;
+  AuthState _authState = AuthState.loading;
   String? _authError;
+
+  // Datos del usuario
+  String _userName = '';
+  String _userRol = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    final session = await _session.restore();
+    if (session != null) {
+      _api.setToken(session.token);
+      setState(() {
+        _userName = session.nombre;
+        _userRol = session.rol;
+        _authState = AuthState.authenticated;
+      });
+      _loadData();
+    } else {
+      setState(() => _authState = AuthState.login);
+    }
+  }
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
 
-    // Cargar métricas
     final metricasResult = await _api.getMetricas();
     if (metricasResult.isSuccess) {
       final d = metricasResult.data!;
@@ -51,7 +78,6 @@ class _ColmenaAppState extends State<ColmenaApp> {
       );
     }
 
-    // Cargar reportes
     final reportesResult = await _api.getReportes(porPagina: 50);
     if (reportesResult.isSuccess) {
       final data = reportesResult.data!;
@@ -103,70 +129,61 @@ class _ColmenaAppState extends State<ColmenaApp> {
     );
   }
 
-  TamanoDraga _parseTamanoDraga(String? codigo) {
-    return switch (codigo) {
-      'PEQUENA' => TamanoDraga.pequena,
-      'MEDIANA' => TamanoDraga.mediana,
-      'GRANDE' => TamanoDraga.grande,
-      _ => TamanoDraga.mediana,
-    };
-  }
+  TamanoDraga _parseTamanoDraga(String? codigo) => switch (codigo) {
+        'PEQUENA' => TamanoDraga.pequena,
+        'MEDIANA' => TamanoDraga.mediana,
+        'GRANDE' => TamanoDraga.grande,
+        _ => TamanoDraga.mediana,
+      };
 
-  TiempoOperando _parseTiempoOperando(String? codigo) {
-    return switch (codigo) {
-      'MENOS_1_DIA' => TiempoOperando.menosUnDia,
-      'VARIOS_DIAS' => TiempoOperando.variosDias,
-      'MAS_1_SEMANA' => TiempoOperando.masUnaSemana,
-      _ => TiempoOperando.variosDias,
-    };
-  }
+  TiempoOperando _parseTiempoOperando(String? codigo) => switch (codigo) {
+        'MENOS_1_DIA' => TiempoOperando.menosUnDia,
+        'VARIOS_DIAS' => TiempoOperando.variosDias,
+        'MAS_1_SEMANA' => TiempoOperando.masUnaSemana,
+        _ => TiempoOperando.variosDias,
+      };
 
-  NivelRiesgo _parseNivelRiesgo(String? codigo) {
-    return switch (codigo) {
-      'BAJO' => NivelRiesgo.bajo,
-      'MEDIO' => NivelRiesgo.medio,
-      'ALTO' => NivelRiesgo.alto,
-      _ => NivelRiesgo.bajo,
-    };
-  }
+  NivelRiesgo _parseNivelRiesgo(String? codigo) => switch (codigo) {
+        'BAJO' => NivelRiesgo.bajo,
+        'MEDIO' => NivelRiesgo.medio,
+        'ALTO' => NivelRiesgo.alto,
+        _ => NivelRiesgo.bajo,
+      };
 
-  EstadoReporte _parseEstado(String? codigo) {
-    return switch (codigo) {
-      'nuevo' => EstadoReporte.nuevo,
-      'revisado' => EstadoReporte.revisado,
-      'escalado' => EstadoReporte.escalado,
-      _ => EstadoReporte.nuevo,
-    };
-  }
+  EstadoReporte _parseEstado(String? codigo) => switch (codigo) {
+        'nuevo' => EstadoReporte.nuevo,
+        'revisado' => EstadoReporte.revisado,
+        'escalado' => EstadoReporte.escalado,
+        _ => EstadoReporte.nuevo,
+      };
 
-  void _toggleTheme() {
-    setState(() {
-      _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    });
-  }
+  void _toggleTheme() => setState(() {
+        _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      });
 
-  void _toggleSidebar() {
-    setState(() {
-      _sidebarCollapsed = !_sidebarCollapsed;
-    });
-  }
+  void _toggleSidebar() => setState(() => _sidebarCollapsed = !_sidebarCollapsed);
 
-  void _openReporte(String id) {
-    setState(() {
-      _selectedReporteId = id;
-    });
-  }
+  void _openReporte(String id) => setState(() => _selectedReporteId = id);
 
-  void _clearReporteSelection() {
-    setState(() {
-      _selectedReporteId = null;
-    });
-  }
+  void _clearReporteSelection() => setState(() => _selectedReporteId = null);
 
   Future<void> _handleLogin(String correo, String contrasena) async {
     final result = await _api.login(correo, contrasena);
     if (result.isSuccess) {
+      // Decodificar JWT para extraer datos (sub, rol)
+      final token = result.data!.token;
+
+      // Guardar sesión con correo (nombre viene del token o lo pedimos)
+      await _session.save(UserSession(
+        token: token,
+        nombre: correo.split('@').first, // Nombre temporal del correo
+        correo: correo,
+        rol: 'Analista',
+      ));
+
       setState(() {
+        _userName = correo.split('@').first;
+        _userRol = 'Analista';
         _authState = AuthState.authenticated;
         _authError = null;
       });
@@ -193,7 +210,8 @@ class _ColmenaAppState extends State<ColmenaApp> {
     }
   }
 
-  void _handleLogout() {
+  Future<void> _handleLogout() async {
+    await _session.clear();
     _api.setToken(null);
     setState(() {
       _authState = AuthState.login;
@@ -202,21 +220,19 @@ class _ColmenaAppState extends State<ColmenaApp> {
       _reportes = [];
       _metricas = null;
       _authError = null;
+      _userName = '';
+      _userRol = '';
     });
   }
 
   Future<void> _handleCambiarEstado(String codigo, String nuevoEstado) async {
     final result = await _api.cambiarEstado(codigo, nuevoEstado);
-    if (result.isSuccess) {
-      _loadData(); // Recargar datos
-    }
+    if (result.isSuccess) _loadData();
   }
 
   Reporte? get _selectedReporte {
     for (final reporte in _reportes) {
-      if (reporte.id == _selectedReporteId) {
-        return reporte;
-      }
+      if (reporte.id == _selectedReporteId) return reporte;
     }
     return null;
   }
@@ -243,6 +259,8 @@ class _ColmenaAppState extends State<ColmenaApp> {
 
   Widget _buildHome() {
     switch (_authState) {
+      case AuthState.loading:
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case AuthState.login:
         return LoginScreen(
           onLogin: _handleLogin,
@@ -272,6 +290,8 @@ class _ColmenaAppState extends State<ColmenaApp> {
           themeMode: _themeMode,
           onToggleTheme: _toggleTheme,
           onLogout: _handleLogout,
+          userName: _userName,
+          userRol: _userRol,
           detailPane: _selectedReporte == null
               ? null
               : ReportDetailPanel(

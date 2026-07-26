@@ -17,6 +17,8 @@ class AppShell extends StatelessWidget {
     required this.onLogout,
     required this.detailPane,
     required this.child,
+    this.userName = '',
+    this.userRol = '',
   });
 
   final AppView view;
@@ -30,6 +32,8 @@ class AppShell extends StatelessWidget {
   final VoidCallback onLogout;
   final Widget? detailPane;
   final Widget child;
+  final String userName;
+  final String userRol;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +55,8 @@ class AppShell extends StatelessWidget {
                   sidebarCollapsed: sidebarCollapsed,
                   onToggleSidebar: onToggleSidebar,
                   onLogout: onLogout,
+                  userName: userName,
+                  userRol: userRol,
                 ),
                 // Contenido principal
                 Expanded(
@@ -177,6 +183,8 @@ class _Sidebar extends StatelessWidget {
     required this.sidebarCollapsed,
     required this.onToggleSidebar,
     required this.onLogout,
+    this.userName = '',
+    this.userRol = '',
   });
 
   final AppView view;
@@ -184,6 +192,8 @@ class _Sidebar extends StatelessWidget {
   final bool sidebarCollapsed;
   final VoidCallback onToggleSidebar;
   final VoidCallback onLogout;
+  final String userName;
+  final String userRol;
 
   @override
   Widget build(BuildContext context) {
@@ -289,15 +299,25 @@ class _Sidebar extends StatelessWidget {
                         CircleAvatar(
                           radius: 14,
                           backgroundColor: colorScheme.primaryContainer,
-                          child: const Icon(Icons.person, size: 16),
+                          child: Text(
+                            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colorScheme.primary),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Monitor', style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
-                              Text('En línea', style: textTheme.bodySmall?.copyWith(color: Colors.green, fontSize: 10)),
+                              Text(
+                                userName.isNotEmpty ? userName : 'Usuario',
+                                style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                userRol.isNotEmpty ? userRol : 'En línea',
+                                style: textTheme.bodySmall?.copyWith(color: Colors.green, fontSize: 10),
+                              ),
                             ],
                           ),
                         ),

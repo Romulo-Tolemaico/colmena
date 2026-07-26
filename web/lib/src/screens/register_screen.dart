@@ -33,7 +33,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _loading = true);
     await widget.onRegister(
       _nameController.text.trim(),
@@ -48,271 +47,217 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    final isWide = size.width >= 900;
+    final isWide = size.width >= 860;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF1B2B1B),
       body: Row(
         children: [
+          // Panel izquierdo - branding
           if (isWide)
             Expanded(
               flex: 5,
               child: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF1B2A1B),
-                      const Color(0xFF2D4A2D),
-                      const Color(0xFF1A3A2A),
-                    ],
+                    colors: [Color(0xFF1B2B1B), Color(0xFF2D4A2D), Color(0xFF1A3A2A)],
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: -80,
-                      left: -80,
-                      child: Container(
-                        width: 300,
-                        height: 300,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.03),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(48),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: const Icon(Icons.group_add_outlined, size: 48, color: Color(0xFF81C784)),
                         ),
-                      ),
-                    ),
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(48),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF4CAF50).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(Icons.group_add_outlined, size: 48, color: Color(0xFF81C784)),
-                            ),
-                            const SizedBox(height: 32),
-                            Text(
-                              'Únete a Colmena',
-                              style: theme.textTheme.displaySmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Forma parte de la red comunitaria\nde monitoreo ambiental',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: Colors.white70,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 48),
-                            _BenefitItem(
-                              icon: Icons.shield_outlined,
-                              title: 'Protege tu comunidad',
-                              subtitle: 'Reporta actividades ilegales de forma segura',
-                            ),
-                            const SizedBox(height: 20),
-                            _BenefitItem(
-                              icon: Icons.visibility_outlined,
-                              title: 'Monitoreo en tiempo real',
-                              subtitle: 'Accede al mapa de eventos y alertas',
-                            ),
-                            const SizedBox(height: 20),
-                            _BenefitItem(
-                              icon: Icons.lock_outlined,
-                              title: 'Anonimato garantizado',
-                              subtitle: 'Tu identidad está protegida',
-                            ),
-                          ],
+                        const SizedBox(height: 28),
+                        const Text(
+                          'Únete a Colmena',
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Forma parte de la red comunitaria\nde monitoreo ambiental',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16, color: Colors.white70, height: 1.5),
+                        ),
+                        const SizedBox(height: 40),
+                        _BenefitCard(icon: Icons.shield_outlined, title: 'Protege tu comunidad', subtitle: 'Reporta de forma segura'),
+                        const SizedBox(height: 12),
+                        _BenefitCard(icon: Icons.visibility_outlined, title: 'Monitoreo continuo', subtitle: 'Accede al mapa y alertas'),
+                        const SizedBox(height: 12),
+                        _BenefitCard(icon: Icons.lock_outlined, title: 'Anonimato garantizado', subtitle: 'Tu identidad protegida'),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
+
+          // Panel derecho - formulario
           Expanded(
             flex: 4,
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (!isWide) ...[
-                          Icon(Icons.hive_outlined, size: 48, color: theme.colorScheme.primary),
-                          const SizedBox(height: 8),
+            child: Container(
+              color: theme.scaffoldBackgroundColor,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!isWide) ...[
+                            Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.hive_outlined, size: 44, color: theme.colorScheme.primary),
+                                  const SizedBox(height: 6),
+                                  Text('Colmena', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          Text('Crear cuenta', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
                           Text(
-                            'Colmena',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                            'Completa tus datos para registrarte',
+                            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                           ),
+
                           const SizedBox(height: 24),
-                        ],
-                        Text(
-                          'Crear cuenta',
-                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Completa tus datos para registrarte en la plataforma',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 28),
-                        TextFormField(
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre completo',
-                            hintText: 'Juan Pérez',
-                            prefixIcon: Icon(Icons.person_outlined),
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ingresa tu nombre';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Correo electrónico',
-                            hintText: 'tu@correo.com',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Ingresa tu correo';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Ingresa un correo válido';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: _selectedRole,
-                          decoration: const InputDecoration(
-                            labelText: 'Rol',
-                            prefixIcon: Icon(Icons.badge_outlined),
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'ANALISTA', child: Text('Analista')),
-                            DropdownMenuItem(value: 'ADMIN', child: Text('Administrador')),
+
+                          // Error
+                          if (widget.errorMessage != null) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(widget.errorMessage!, style: TextStyle(color: theme.colorScheme.onErrorContainer, fontSize: 13))),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
                           ],
-                          onChanged: (value) {
-                            if (value != null) setState(() => _selectedRole = value);
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Contraseña',
-                            hintText: '••••••••',
-                            prefixIcon: const Icon(Icons.lock_outlined),
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                              icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                            ),
+
+                          // Nombre
+                          TextFormField(
+                            controller: _nameController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: _inputDecoration(theme, 'Nombre completo', 'Juan Pérez', Icons.person_outlined),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu nombre' : null,
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa una contraseña';
-                            }
-                            if (value.length < 8) {
-                              return 'Mínimo 8 caracteres';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirm,
-                          decoration: InputDecoration(
-                            labelText: 'Confirmar contraseña',
-                            hintText: '••••••••',
-                            prefixIcon: const Icon(Icons.lock_outlined),
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                              icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                            ),
+                          const SizedBox(height: 14),
+
+                          // Email
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: _inputDecoration(theme, 'Correo electrónico', 'tu@correo.com', Icons.email_outlined),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
+                              if (!v.contains('@')) return 'Correo inválido';
+                              return null;
+                            },
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Confirma tu contraseña';
-                            }
-                            if (value != _passwordController.text) {
-                              return 'Las contraseñas no coinciden';
-                            }
-                            return null;
-                          },
-                        ),
-                        if (widget.errorMessage != null) ...[
-                          const SizedBox(height: 12),
-                          Container(
+                          const SizedBox(height: 14),
+
+                          // Rol
+                          DropdownButtonFormField<String>(
+                            value: _selectedRole,
+                            decoration: _inputDecoration(theme, 'Rol', '', Icons.badge_outlined),
+                            items: const [
+                              DropdownMenuItem(value: 'ANALISTA', child: Text('Analista')),
+                              DropdownMenuItem(value: 'ADMIN', child: Text('Administrador')),
+                            ],
+                            onChanged: (v) { if (v != null) setState(() => _selectedRole = v); },
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Password
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            decoration: _inputDecoration(theme, 'Contraseña', '••••••••', Icons.lock_outlined).copyWith(
+                              suffixIcon: IconButton(
+                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                              ),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Ingresa una contraseña';
+                              if (v.length < 8) return 'Mínimo 8 caracteres';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Confirm password
+                          TextFormField(
+                            controller: _confirmPasswordController,
+                            obscureText: _obscureConfirm,
+                            decoration: _inputDecoration(theme, 'Confirmar contraseña', '••••••••', Icons.lock_outlined).copyWith(
+                              suffixIcon: IconButton(
+                                onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                                icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                              ),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return 'Confirma tu contraseña';
+                              if (v != _passwordController.text) return 'No coinciden';
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Submit
+                          SizedBox(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.errorContainer,
-                              borderRadius: BorderRadius.circular(8),
+                            height: 50,
+                            child: FilledButton(
+                              onPressed: _loading ? null : _submit,
+                              style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                              child: _loading
+                                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Text('Crear cuenta', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                             ),
-                            child: Text(
-                              widget.errorMessage!,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 13),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('¿Ya tienes cuenta?', style: theme.textTheme.bodyMedium),
+                                TextButton(onPressed: widget.onGoToLogin, child: const Text('Iniciar sesión')),
+                              ],
                             ),
                           ),
                         ],
-                        const SizedBox(height: 24),
-                        FilledButton(
-                          onPressed: _loading ? null : _submit,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text('Crear cuenta', style: TextStyle(fontSize: 16)),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('¿Ya tienes cuenta?', style: theme.textTheme.bodyMedium),
-                            TextButton(
-                              onPressed: widget.onGoToLogin,
-                              child: const Text('Iniciar sesión'),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -323,10 +268,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+
+  InputDecoration _inputDecoration(ThemeData theme, String label, String hint, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+    );
+  }
 }
 
-class _BenefitItem extends StatelessWidget {
-  const _BenefitItem({required this.icon, required this.title, required this.subtitle});
+class _BenefitCard extends StatelessWidget {
+  const _BenefitCard({required this.icon, required this.title, required this.subtitle});
 
   final IconData icon;
   final String title;
@@ -334,30 +290,33 @@ class _BenefitItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: const Color(0xFF81C784), size: 20),
           ),
-          child: Icon(icon, color: const Color(0xFF81C784), size: 22),
-        ),
-        const SizedBox(width: 14),
-        Flexible(
-          child: Column(
+          const SizedBox(width: 12),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 11)),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
