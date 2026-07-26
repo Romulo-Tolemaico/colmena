@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../models/reporte.dart';
+
 /// Widget de chat flotante tipo burbuja.
-/// Muestra solo un ícono FAB. Al hacer clic se abre el panel de chat como overlay.
+/// Responde preguntas basándose en los datos de reportes cargados.
 class FloatingChat extends StatefulWidget {
-  const FloatingChat({super.key});
+  const FloatingChat({super.key, this.reportes = const []});
+
+  final List<Reporte> reportes;
 
   @override
   State<FloatingChat> createState() => _FloatingChatState();
@@ -14,7 +18,7 @@ class _FloatingChatState extends State<FloatingChat> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [
-    const _ChatMessage(author: 'Colmena', text: '¡Hola! Soy el asistente de Colmena. ¿En qué puedo ayudarte?', isBot: true),
+    const _ChatMessage(author: 'Colmena', text: '¡Hola! Soy el asistente de Colmena. Pregúntame sobre los reportes, zonas o mercurio estimado.', isBot: true),
   ];
 
   @override
@@ -37,21 +41,82 @@ class _FloatingChatState extends State<FloatingChat> {
       _controller.clear();
     });
 
-    // Simular respuesta del bot
-    Future.delayed(const Duration(milliseconds: 600), () {
+    // Generar respuesta inteligente basada en los datos
+    Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
+        final response = _generateResponse(text);
         setState(() {
-          _messages.add(const _ChatMessage(
-            author: 'Colmena',
-            text: 'Mensaje recibido. Queda registrado en seguimiento.',
-            isBot: true,
-          ));
+          _messages.add(_ChatMessage(author: 'Colmena', text: response, isBot: true));
         });
         _scrollToBottom();
       }
     });
 
     _scrollToBottom();
+  }
+
+  String _generateResponse(String query) {
+    final q = query.toLowerCase();
+    final reportes = widget.reportes;
+
+    if (reportes.isEmpty) {
+      return 'No tengo datos cargados aún. Intenta recargar el dashboard.';
+    }
+
+    // Zona con más denuncias
+    if (q.contains('zona') && (q.contains('más') || q.contains('mayor'))) {
+      final zonas = <String, int>{};
+      for (final r in reportes) {
+        final zona = r.zonaProtegida.nombre ?? 'Sin zona';
+        zonas[zona] = (zonas[zona] ?? 0) + 1;
+      }
+      if (zonas.isEmpty) return 'No hay datos de zonas protegidas en los reportes actuales.';
+      final top = zonas.entries.reduce((a, b) => a.value >= b.value ? a : b);
+      return 'La zona con más denuncias es "${top.key}" con ${top.value} reporte${top.value > 1 ? 's' : ''}. En total hay ${zonas.length} zonas afectadas.';
+    }
+
+    // Mercurio total
+    if (q.contains('mercurio') || q.contains('hg')) {
+      final total = reportes.fold(0.0, (sum, r) => sum + r.mercurioEstimadoKg);
+      final promedio = reportes.isNotEmpty ? total / reportes.length : 0.0;
+      return 'El mercurio total estimado es ${total.toStringAsFixed(1)} kg en ${reportes.length} reportes. Promedio por reporte: ${promedio.toStringAsFixed(1)} kg.';
+    }
+
+    // Resumen / esta semana
+    if (q.contains('resumen') || q.contains('semana') || q.contains('general')) {
+      final nuevos = reportes.where((r) => r.estado == EstadoReporte.nuevo).length;
+      final revisados = reportes.where((r) => r.estado == EstadoReporte.revisado).length;
+      final escalados = reportes.where((r) => r.estado == EstadoReporte.escalado).length;
+      final mercurio = reportes.fold(0.0, (sum, r) => sum + r.mercurioEstimadoKg);
+      return 'Resumen: ${reportes.length} reportes totales.\n• Nuevos: $nuevos\n• En revisión: $revisados\n• Escalados: $escalados\n• Mercurio estimado: ${mercurio.toStringAsFixed(1)} kg';
+    }
+
+    // Alertas activas
+    if (q.contains('alerta') || q.contains('activa') || q.contains('nuevo')) {
+      final alertas = reportes.where((r) => r.estado == EstadoReporte.nuevo || r.nivelRiesgo == NivelRiesgo.alto).length;
+      return 'Hay $alertas reportes que requieren atención (estado nuevo o riesgo alto).';
+    }
+
+    // Riesgo alto
+    if (q.contains('riesgo') || q.contains('alto') || q.contains('crítico')) {
+      final altos = reportes.where((r) => r.nivelRiesgo == NivelRiesgo.alto).length;
+      return '$altos de ${reportes.length} reportes tienen nivel de riesgo ALTO.';
+    }
+
+    // Total / cuántos
+    if (q.contains('total') || q.contains('cuántos') || q.contains('cuantos')) {
+      return 'En total hay ${reportes.length} reportes registrados en el sistema.';
+    }
+
+    // Anónimos
+    if (q.contains('anónimo') || q.contains('anonimo') || q.contains('contacto')) {
+      final anonimos = reportes.where((r) => r.tipoContacto == TipoContacto.anonimo).length;
+      final conContacto = reportes.length - anonimos;
+      return 'Reportes anónimos: $anonimos (${(anonimos * 100 / reportes.length).toStringAsFixed(0)}%)\nCon contacto: $conContacto';
+    }
+
+    // Default
+    return 'Tengo ${reportes.length} reportes cargados. Puedo darte información sobre:\n• Zonas más afectadas\n• Mercurio estimado\n• Alertas activas\n• Resumen general\n• Reportes anónimos vs con contacto';
   }
 
   void _sendSuggestion(String text) {
@@ -76,7 +141,6 @@ class _FloatingChatState extends State<FloatingChat> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Solo el FAB cuando está cerrado
     if (!_isOpen) {
       return FloatingActionButton(
         onPressed: _toggle,
@@ -87,7 +151,6 @@ class _FloatingChatState extends State<FloatingChat> {
       );
     }
 
-    // Panel de chat abierto (tamaño fijo, no usa Stack)
     return SizedBox(
       width: 360,
       height: 520,
@@ -95,7 +158,6 @@ class _FloatingChatState extends State<FloatingChat> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Panel de chat
           Expanded(
             child: Material(
               elevation: 8,
@@ -109,12 +171,9 @@ class _FloatingChatState extends State<FloatingChat> {
                 ),
                 child: Column(
                   children: [
-                    // Header del chat
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                      ),
+                      decoration: BoxDecoration(color: colorScheme.primaryContainer),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -128,7 +187,7 @@ class _FloatingChatState extends State<FloatingChat> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Asistente Colmena', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                                Text('En línea', style: theme.textTheme.bodySmall?.copyWith(color: Colors.green, fontSize: 11)),
+                                Text('${widget.reportes.length} reportes cargados', style: theme.textTheme.bodySmall?.copyWith(color: Colors.green, fontSize: 11)),
                               ],
                             ),
                           ),
@@ -141,45 +200,34 @@ class _FloatingChatState extends State<FloatingChat> {
                         ],
                       ),
                     ),
-
-                    // Mensajes
                     Expanded(
                       child: ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.all(12),
                         itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          return _ChatBubble(message: message);
-                        },
+                        itemBuilder: (context, index) => _ChatBubble(message: _messages[index]),
                       ),
                     ),
-
-                    // Sugerencias de preguntas rápidas
                     Container(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _SuggestionChip(label: '¿Zona con más denuncias?', onTap: () => _sendSuggestion('¿Qué zona tuvo más denuncias este mes?')),
+                            _SuggestionChip(label: '¿Zona con más denuncias?', onTap: () => _sendSuggestion('¿Qué zona tuvo más denuncias?')),
                             const SizedBox(width: 6),
                             _SuggestionChip(label: 'Mercurio total', onTap: () => _sendSuggestion('¿Cuánto mercurio se ha estimado en total?')),
                             const SizedBox(width: 6),
-                            _SuggestionChip(label: 'Resumen semanal', onTap: () => _sendSuggestion('Dame un resumen de esta semana')),
+                            _SuggestionChip(label: 'Resumen general', onTap: () => _sendSuggestion('Dame un resumen general')),
                             const SizedBox(width: 6),
                             _SuggestionChip(label: 'Alertas activas', onTap: () => _sendSuggestion('¿Cuántas alertas activas hay?')),
                           ],
                         ),
                       ),
                     ),
-
-                    // Input
                     Container(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                      decoration: BoxDecoration(
-                        border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
-                      ),
+                      decoration: BoxDecoration(border: Border(top: BorderSide(color: colorScheme.outlineVariant))),
                       child: Row(
                         children: [
                           Expanded(
@@ -188,12 +236,9 @@ class _FloatingChatState extends State<FloatingChat> {
                               minLines: 1,
                               maxLines: 3,
                               decoration: InputDecoration(
-                                hintText: 'Escribe un mensaje...',
+                                hintText: 'Pregunta sobre los datos...',
                                 hintStyle: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide(color: colorScheme.outlineVariant),
-                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: colorScheme.outlineVariant)),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                 isDense: true,
                               ),
@@ -204,10 +249,7 @@ class _FloatingChatState extends State<FloatingChat> {
                           IconButton.filled(
                             onPressed: _send,
                             icon: const Icon(Icons.send, size: 18),
-                            style: IconButton.styleFrom(
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                            ),
+                            style: IconButton.styleFrom(backgroundColor: colorScheme.primary, foregroundColor: colorScheme.onPrimary),
                           ),
                         ],
                       ),
@@ -217,10 +259,7 @@ class _FloatingChatState extends State<FloatingChat> {
               ),
             ),
           ),
-
           const SizedBox(height: 12),
-
-          // FAB para cerrar
           FloatingActionButton(
             onPressed: _toggle,
             backgroundColor: colorScheme.primary,
@@ -236,7 +275,6 @@ class _FloatingChatState extends State<FloatingChat> {
 
 class _ChatBubble extends StatelessWidget {
   const _ChatBubble({required this.message});
-
   final _ChatMessage message;
 
   @override
@@ -264,20 +302,9 @@ class _ChatBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                message.author,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: isBot ? colorScheme.primary : colorScheme.onPrimaryContainer,
-                ),
-              ),
+              Text(message.author, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: isBot ? colorScheme.primary : colorScheme.onPrimaryContainer)),
               const SizedBox(height: 3),
-              Text(
-                message.text,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isBot ? colorScheme.onSurface : colorScheme.onPrimaryContainer,
-                ),
-              ),
+              Text(message.text, style: theme.textTheme.bodySmall?.copyWith(color: isBot ? colorScheme.onSurface : colorScheme.onPrimaryContainer)),
             ],
           ),
         ),
@@ -288,7 +315,6 @@ class _ChatBubble extends StatelessWidget {
 
 class _ChatMessage {
   const _ChatMessage({required this.author, required this.text, required this.isBot});
-
   final String author;
   final String text;
   final bool isBot;
@@ -296,7 +322,6 @@ class _ChatMessage {
 
 class _SuggestionChip extends StatelessWidget {
   const _SuggestionChip({required this.label, required this.onTap});
-
   final String label;
   final VoidCallback onTap;
 

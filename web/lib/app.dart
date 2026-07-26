@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'src/app.dart';
@@ -38,7 +40,6 @@ class _ColmenaAppState extends State<ColmenaApp> {
   AuthState _authState = AuthState.loading;
   String? _authError;
 
-  // Datos del usuario
   String _userName = '';
   String _userRol = '';
 
@@ -66,10 +67,11 @@ class _ColmenaAppState extends State<ColmenaApp> {
   Future<void> _loadData({String? estado, String? fecha}) async {
     setState(() => _loading = true);
 
+    MetricasDashboard? metricasBase;
     final metricasResult = await _api.getMetricas();
     if (metricasResult.isSuccess) {
       final d = metricasResult.data!;
-      _metricas = MetricasDashboard(
+      metricasBase = MetricasDashboard(
         totalDenuncias: (d['total_reportes'] as num?)?.toInt() ?? 0,
         mercurioAcumuladoKg: (d['mercurio_acumulado_kg'] as num?)?.toDouble() ?? 0.0,
         zonasProtegidasAfectadas: (d['zonas_afectadas'] as num?)?.toInt() ?? 0,
@@ -84,6 +86,25 @@ class _ColmenaAppState extends State<ColmenaApp> {
       final lista = (data['reportes'] as List<dynamic>?) ?? [];
       _reportes = lista.map((r) => _mapReporte(r as Map<String, dynamic>)).toList();
     }
+
+    // Calcular denuncias por mes desde los reportes cargados
+    final porMes = <String, int>{};
+    final mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    for (final r in _reportes) {
+      final key = '${mesesNombres[r.fecha.month - 1]} ${r.fecha.year}';
+      porMes[key] = (porMes[key] ?? 0) + 1;
+    }
+    final seriesMensuales = porMes.entries
+        .map((e) => SerieMensual(mes: e.key, cantidad: e.value))
+        .toList();
+
+    _metricas = MetricasDashboard(
+      totalDenuncias: metricasBase?.totalDenuncias ?? _reportes.length,
+      mercurioAcumuladoKg: metricasBase?.mercurioAcumuladoKg ?? 0.0,
+      zonasProtegidasAfectadas: metricasBase?.zonasProtegidasAfectadas ?? 0,
+      porcentajeAnonimas: metricasBase?.porcentajeAnonimas ?? 0,
+      denunciasPorMes: seriesMensuales,
+    );
 
     setState(() => _loading = false);
   }
@@ -170,20 +191,31 @@ class _ColmenaAppState extends State<ColmenaApp> {
   Future<void> _handleLogin(String correo, String contrasena) async {
     final result = await _api.login(correo, contrasena);
     if (result.isSuccess) {
-      // Decodificar JWT para extraer datos (sub, rol)
       final token = result.data!.token;
 
-      // Guardar sesión con correo (nombre viene del token o lo pedimos)
+      // Decodificar JWT para extraer nombre
+      String nombre = correo.split('@').first;
+      String rol = 'Analista';
+      try {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+          final claims = jsonDecode(payload) as Map<String, dynamic>;
+          if (claims['nombre'] != null) nombre = claims['nombre'] as String;
+          if (claims['rol'] != null) rol = claims['rol'] as String;
+        }
+      } catch (_) {}
+
       await _session.save(UserSession(
         token: token,
-        nombre: correo.split('@').first, // Nombre temporal del correo
+        nombre: nombre,
         correo: correo,
-        rol: 'Analista',
+        rol: rol,
       ));
 
       setState(() {
-        _userName = correo.split('@').first;
-        _userRol = 'Analista';
+        _userName = nombre;
+        _userRol = rol;
         _authState = AuthState.authenticated;
         _authError = null;
       });
@@ -292,6 +324,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
           onLogout: _handleLogout,
           userName: _userName,
           userRol: _userRol,
+          reportes: _reportes,
           detailPane: _selectedReporte == null
               ? null
               : ReportDetailPanel(

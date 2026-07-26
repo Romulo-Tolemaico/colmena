@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../models/reporte.dart';
 import 'floating_chat.dart';
 
 class AppShell extends StatelessWidget {
@@ -19,6 +20,7 @@ class AppShell extends StatelessWidget {
     required this.child,
     this.userName = '',
     this.userRol = '',
+    this.reportes = const [],
   });
 
   final AppView view;
@@ -34,6 +36,7 @@ class AppShell extends StatelessWidget {
   final Widget child;
   final String userName;
   final String userRol;
+  final List<Reporte> reportes;
 
   @override
   Widget build(BuildContext context) {
@@ -162,10 +165,10 @@ class AppShell extends StatelessWidget {
               ],
             ),
             // Chat flotante
-            const Positioned(
+            Positioned(
               bottom: 24,
               right: 24,
-              child: FloatingChat(),
+              child: FloatingChat(reportes: reportes),
             ),
           ],
         ),
