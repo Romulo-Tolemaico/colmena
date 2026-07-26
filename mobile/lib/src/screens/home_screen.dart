@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_service.dart';
 import '../data/mock_registros.dart';
 import '../models/registro.dart';
 import '../widgets/connection_indicator.dart';
@@ -9,14 +10,191 @@ import 'estimation_screen.dart';
 import 'record_detail_screen.dart';
 import 'report_result_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final MobileApiService _api = MobileApiService(
+    // En dispositivo físico con USB, usar la IP de tu PC en la red local.
+    // En emulador Android: 10.0.2.2 apunta a localhost del host.
+    // Cambia esto por tu IP local si pruebas en celular físico:
+    baseUrl: 'http://10.0.2.2:3000/api/v1',
+  );
+
+  List<Registro> _registros = [];
+  bool _loading = true;
+  bool _online = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRegistros();
+  }
+
+  Future<void> _loadRegistros() async {
+    setState(() => _loading = true);
+
+    final result = await _api.getReportes(porPagina: 50);
+    if (result.isSuccess) {
+      setState(() {
+        _registros = result.data!.map(_mapRegistro).toList();
+        _online = true;
+        _loading = false;
+      });
+    } else {
+      // Sin conexión — usar datos locales mock
+      setState(() {
+        _registros = mockRegistros;
+        _online = false;
+        _loading = false;
+      });
+    }
+  }
+
+  Registro _mapRegistro(Map<String, dynamic> json) {
+    return Registro(
+      id: json['codigo'] as String? ?? '',
+      fecha: DateTime.tryParse(json['fecha_creacion']?.toString() ?? '') ?? DateTime.now(),
+      ubicacion: Ubicacion(
+        lat: (json['latitud'] as num?)?.toDouble() ?? 0.0,
+        lng: (json['longitud'] as num?)?.toDouble() ?? 0.0,
+      ),
+      fotos: const [],
+      tamanoDraga: _parseDraga(json['tamano_draga_codigo'] as String?),
+      tiempoOperando: _parseTiempo(json['tiempo_operacion_codigo'] as String?),
+      indicadores: IndicadoresVisibles(
+        personasVisibles: json['personas_visibles'] as bool? ?? false,
+        motobombasVisibles: json['motobombas_visibles'] as bool? ?? false,
+      ),
+      estadoSync: EstadoSync.sincronizado,
+      notas: json['nota'] as String?,
+      mercurioEstimadoKg: (json['evaluacion'] != null)
+          ? (json['evaluacion']['mercurio_estimado_kg'] as num?)?.toDouble()
+          : null,
+      zonaProtegida: (json['evaluacion']?['zona_codigo'] != null)
+          ? ZonaProtegida(esZonaProtegida: true, nombre: json['evaluacion']['zona_codigo'] as String?)
+          : null,
+      normativaCitada: json['evaluacion']?['normativa_codigo'] != null
+          ? [json['evaluacion']['normativa_codigo'] as String]
+          : null,
+      danoEconomicoEstimado: null,
+      nivelRiesgo: _parseRiesgo(json['evaluacion']?['nivel_riesgo_codigo'] as String?),
+      estadoReporte: _parseEstado(json['estado_codigo'] as String?),
+    );
+  }
+
+  TamanoDraga _parseDraga(String? c) => switch (c) {
+        'PEQUENA' => TamanoDraga.pequena,
+        'GRANDE' => TamanoDraga.grande,
+        _ => TamanoDraga.mediana,
+      };
+
+  TiempoOperando _parseTiempo(String? c) => switch (c) {
+        'MENOS_1_DIA' => TiempoOperando.menosUnDia,
+        'MAS_1_SEMANA' => TiempoOperando.masUnaSemana,
+        _ => TiempoOperando.variosDias,
+      };
+
+  NivelRiesgo? _parseRiesgo(String? c) => switch (c) {
+        'BAJO' => NivelRiesgo.bajo,
+        'MEDIO' => NivelRiesgo.medio,
+        'ALTO' => NivelRiesgo.alto,
+        _ => null,
+      };
+
+  EstadoReporte? _parseEstado(String? c) => switch (c) {
+        'nuevo' => EstadoReporte.nuevo,
+        'revisado' => EstadoReporte.revisado,
+        'escalado' => EstadoReporte.escalado,
+        _ => null,
+      };
+
+  Future<void> _startNewReport() async {
+    // Flujo: Cámara → Estimación → Enviar al API → Resultado
+    final cameraResult = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => const CameraScreen()),
+    );
+    if (cameraResult == null || !mounted) return;
+
+    final photos = (cameraResult['photos'] as List<dynamic>?)?.cast<String>() ?? [];
+    if (photos.isEmpty) return;
+
+    final lat = cameraResult['lat'] as double?;
+    final lng = cameraResult['lng'] as double?;
+
+    if (!mounted) return;
+    final estimation = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => EstimationScreen(fotos: photos)),
+    );
+    if (estimation == null || !mounted) return;
+
+    final tamanoDraga = estimation['tamanoDraga'] as TamanoDraga? ?? TamanoDraga.mediana;
+    final tiempoOperando = estimation['tiempoOperando'] as TiempoOperando? ?? TiempoOperando.variosDias;
+    final personasVisibles = estimation['personasVisibles'] as bool? ?? false;
+    final motobombasVisibles = estimation['motobombasVisibles'] as bool? ?? false;
+    final notas = estimation['notas'] as String?;
+
+    // Enviar al API
+    final result = await _api.enviarReporte(
+      latitud: lat ?? -11.4162,
+      longitud: lng ?? -67.5441,
+      tamanoDraga: tamanoDraga,
+      tiempoOperando: tiempoOperando,
+      personasVisibles: personasVisibles,
+      motobombasVisibles: motobombasVisibles,
+      nota: notas,
+    );
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      // Mostrar resultado con datos mock del agente (el análisis real es asíncrono)
+      final mockResult = Registro(
+        id: result.data!,
+        fecha: DateTime.now(),
+        ubicacion: Ubicacion(lat: lat ?? -11.4162, lng: lng ?? -67.5441),
+        fotos: photos,
+        tamanoDraga: tamanoDraga,
+        tiempoOperando: tiempoOperando,
+        indicadores: IndicadoresVisibles(
+          personasVisibles: personasVisibles,
+          motobombasVisibles: motobombasVisibles,
+        ),
+        estadoSync: EstadoSync.sincronizado,
+        notas: notas,
+        mercurioEstimadoKg: 14.7,
+        zonaProtegida: const ZonaProtegida(esZonaProtegida: true, nombre: 'Reserva Manuripi'),
+        normativaCitada: const ['Ley 1333', 'D.S. 28592'],
+        danoEconomicoEstimado: 52000,
+        nivelRiesgo: NivelRiesgo.alto,
+        estadoReporte: EstadoReporte.nuevo,
+      );
+
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ReportResultScreen(registro: mockResult)),
+      );
+
+      // Recargar lista
+      _loadRegistros();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.error ?? 'Error al enviar'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final registros = mockRegistros;
-    final pendientes = registros.where((r) => r.estadoSync == EstadoSync.pendiente).length;
+    final pendientes = _registros.where((r) => r.estadoSync == EstadoSync.pendiente).length;
 
     return Scaffold(
       body: SafeArea(
@@ -25,7 +203,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header con logo e indicador de conexión
+              // Header
               Row(
                 children: [
                   CircleAvatar(
@@ -43,13 +221,13 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const ConnectionIndicator(isOnline: true),
+                  ConnectionIndicator(isOnline: _online),
                 ],
               ),
 
               const SizedBox(height: 24),
 
-              // Barra de sincronización si hay pendientes
+              // Sync banner
               if (pendientes > 0)
                 Container(
                   width: double.infinity,
@@ -77,105 +255,60 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       FilledButton.tonal(
-                        onPressed: () {},
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                        ),
+                        onPressed: _loadRegistros,
+                        style: FilledButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 14)),
                         child: const Text('Sincronizar', style: TextStyle(fontSize: 13)),
                       ),
                     ],
                   ),
                 ),
 
-              // Título de la lista
+              // Title
               Text('Mis registros', style: theme.textTheme.headlineSmall),
               const SizedBox(height: 4),
               Text(
-                '${registros.length} registro${registros.length != 1 ? 's' : ''}',
+                _loading ? 'Cargando...' : '${_registros.length} registro${_registros.length != 1 ? 's' : ''}',
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 12),
 
-              // Lista de registros
+              // List
               Expanded(
-                child: registros.isEmpty
-                    ? _EmptyState()
-                    : ListView.separated(
-                        itemCount: registros.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final registro = registros[index];
-                          return _RegistroCard(
-                            registro: registro,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => RecordDetailScreen(registro: registro),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _registros.isEmpty
+                        ? _EmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _loadRegistros,
+                            child: ListView.separated(
+                              itemCount: _registros.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final registro = _registros[index];
+                                return _RegistroCard(
+                                  registro: registro,
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => RecordDetailScreen(registro: registro)),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
               ),
             ],
           ),
         ),
       ),
 
-      // Botón grande "Nuevo registro"
+      // FAB
       floatingActionButton: SizedBox(
         width: double.infinity,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: FloatingActionButton.extended(
-            onPressed: () async {
-              // Flujo: Cámara → Estimación → Resultado
-              final cameraResult = await Navigator.of(context).push<Map<String, dynamic>>(
-                MaterialPageRoute(builder: (_) => const CameraScreen()),
-              );
-              if (cameraResult == null || !context.mounted) return;
-
-              final photos = (cameraResult['photos'] as List<dynamic>?)?.cast<String>() ?? [];
-              if (photos.isEmpty) return;
-
-              final lat = cameraResult['lat'] as double?;
-              final lng = cameraResult['lng'] as double?;
-
-              final estimation = await Navigator.of(context).push<Map<String, dynamic>>(
-                MaterialPageRoute(builder: (_) => EstimationScreen(fotos: photos)),
-              );
-              if (estimation == null || !context.mounted) return;
-
-              // Crear registro mock con resultado simulado del agente
-              final mockResult = Registro(
-                id: 'REG-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-                fecha: DateTime.now(),
-                ubicacion: Ubicacion(lat: lat ?? -11.4162, lng: lng ?? -67.5441),
-                fotos: photos,
-                tamanoDraga: estimation['tamanoDraga'] as TamanoDraga? ?? TamanoDraga.mediana,
-                tiempoOperando: estimation['tiempoOperando'] as TiempoOperando? ?? TiempoOperando.variosDias,
-                indicadores: IndicadoresVisibles(
-                  personasVisibles: estimation['personasVisibles'] as bool? ?? false,
-                  motobombasVisibles: estimation['motobombasVisibles'] as bool? ?? false,
-                ),
-                estadoSync: EstadoSync.pendiente,
-                notas: estimation['notas'] as String?,
-                // Simulación de resultado del agente
-                mercurioEstimadoKg: 14.7,
-                zonaProtegida: const ZonaProtegida(esZonaProtegida: true, nombre: 'Reserva Manuripi'),
-                normativaCitada: const ['Ley 1333', 'D.S. 28592'],
-                danoEconomicoEstimado: 52000,
-                nivelRiesgo: NivelRiesgo.alto,
-                estadoReporte: EstadoReporte.nuevo,
-              );
-
-              if (!context.mounted) return;
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ReportResultScreen(registro: mockResult)),
-              );
-            },
+            onPressed: _startNewReport,
             icon: const Icon(Icons.camera_alt_outlined, size: 24),
             label: const Text('Nuevo registro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             backgroundColor: theme.colorScheme.primary,
@@ -231,7 +364,6 @@ class _RegistroCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              // Miniatura de foto (placeholder)
               Container(
                 width: 56,
                 height: 56,
@@ -242,15 +374,19 @@ class _RegistroCard extends StatelessWidget {
                 child: Icon(Icons.image_outlined, color: theme.colorScheme.primary, size: 28),
               ),
               const SizedBox(width: 14),
-              // Información
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Text(registro.id, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                        const Spacer(),
+                        Expanded(
+                          child: Text(
+                            registro.id.length > 8 ? registro.id.substring(0, 8) : registro.id,
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         SyncStatusBadge(estado: registro.estadoSync),
                       ],
                     ),
