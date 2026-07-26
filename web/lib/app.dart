@@ -63,7 +63,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
     }
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({String? estado, String? fecha}) async {
     setState(() => _loading = true);
 
     final metricasResult = await _api.getMetricas();
@@ -78,7 +78,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
       );
     }
 
-    final reportesResult = await _api.getReportes(porPagina: 50);
+    final reportesResult = await _api.getReportes(porPagina: 50, estado: estado, fecha: fecha);
     if (reportesResult.isSuccess) {
       final data = reportesResult.data!;
       final lista = (data['reportes'] as List<dynamic>?) ?? [];
@@ -306,6 +306,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
               loading: _loading,
               onOpenReporte: _openReporte,
               selectedReporteId: _selectedReporteId,
+              onFilter: ({String? estado, String? fecha}) => _loadData(estado: estado, fecha: fecha),
             ),
             AppView.historial => HistorialScreen(
               reportes: _reportes,

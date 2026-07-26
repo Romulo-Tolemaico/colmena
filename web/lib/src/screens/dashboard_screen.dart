@@ -12,6 +12,7 @@ class DashboardScreen extends StatelessWidget {
     required this.loading,
     required this.onOpenReporte,
     required this.selectedReporteId,
+    this.onFilter,
   });
 
   final List<Reporte> reportes;
@@ -19,6 +20,7 @@ class DashboardScreen extends StatelessWidget {
   final bool loading;
   final ValueChanged<String> onOpenReporte;
   final String? selectedReporteId;
+  final void Function({String? estado, String? fecha})? onFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +63,7 @@ class DashboardScreen extends StatelessWidget {
 
           // Filtros
           SliverToBoxAdapter(
-            child: _FilterBar(reportes: reportes),
+            child: _FilterBar(reportes: reportes, onFilter: onFilter),
           ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -638,9 +640,10 @@ class _MiniChart extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FilterBar extends StatefulWidget {
-  const _FilterBar({required this.reportes});
+  const _FilterBar({required this.reportes, this.onFilter});
 
   final List<Reporte> reportes;
+  final void Function({String? estado, String? fecha})? onFilter;
 
   @override
   State<_FilterBar> createState() => _FilterBarState();
@@ -669,6 +672,7 @@ class _FilterBarState extends State<_FilterBar> {
     );
     if (result != null) {
       setState(() => _selectedDateRange = result);
+      _applyFilters();
     }
   }
 
@@ -678,6 +682,20 @@ class _FilterBarState extends State<_FilterBar> {
       _selectedZona = null;
       _selectedDateRange = null;
     });
+    widget.onFilter?.call(estado: null, fecha: null);
+  }
+
+  void _applyFilters() {
+    final estado = switch (_selectedRisk) {
+      NivelRiesgo.bajo => 'nuevo',
+      NivelRiesgo.medio => 'revisado',
+      NivelRiesgo.alto => 'escalado',
+      null => null,
+    };
+    final fecha = _selectedDateRange != null
+        ? '${_selectedDateRange!.start.year}-${_selectedDateRange!.start.month.toString().padLeft(2, '0')}-${_selectedDateRange!.start.day.toString().padLeft(2, '0')}'
+        : null;
+    widget.onFilter?.call(estado: estado, fecha: fecha);
   }
 
   @override
@@ -719,6 +737,7 @@ class _FilterBarState extends State<_FilterBar> {
                 onChanged: (value) {
                   setState(() => _selectedZona = value);
                   FocusScope.of(context).unfocus();
+                  _applyFilters();
                 },
               ),
             ),
@@ -739,6 +758,7 @@ class _FilterBarState extends State<_FilterBar> {
                 onChanged: (value) {
                   setState(() => _selectedRisk = value);
                   FocusScope.of(context).unfocus();
+                  _applyFilters();
                 },
               ),
             ),
