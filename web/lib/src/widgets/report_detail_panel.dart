@@ -4,10 +4,11 @@ import '../models/reporte.dart';
 import 'map_widget.dart';
 
 class ReportDetailPanel extends StatefulWidget {
-  const ReportDetailPanel({super.key, required this.reporte, required this.onClose});
+  const ReportDetailPanel({super.key, required this.reporte, required this.onClose, this.onCambiarEstado});
 
   final Reporte reporte;
   final VoidCallback onClose;
+  final Future<void> Function(String codigo, String nuevoEstado)? onCambiarEstado;
 
   @override
   State<ReportDetailPanel> createState() => _ReportDetailPanelState();
@@ -32,7 +33,12 @@ class _ReportDetailPanelState extends State<ReportDetailPanel> {
 
   void _changeEstado(EstadoReporte nuevoEstado) {
     setState(() => _estado = nuevoEstado);
-    // TODO: Cuando haya backend, enviar actualización al servidor
+    final estadoCodigo = switch (nuevoEstado) {
+      EstadoReporte.nuevo => 'nuevo',
+      EstadoReporte.revisado => 'revisado',
+      EstadoReporte.escalado => 'escalado',
+    };
+    widget.onCambiarEstado?.call(widget.reporte.id, estadoCodigo);
   }
 
   @override

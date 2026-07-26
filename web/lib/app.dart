@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/app.dart';
-import 'src/data/data_service.dart';
+import 'src/data/api_service.dart';
 import 'src/models/metricas_dashboard.dart';
 import 'src/models/reporte.dart';
 import 'src/screens/alertas_screen.dart';
@@ -22,7 +22,7 @@ class ColmenaApp extends StatefulWidget {
 }
 
 class _ColmenaAppState extends State<ColmenaApp> {
-  final DataService _dataService = MockDataService();
+  final ApiService _api = ApiService();
   List<Reporte> _reportes = [];
   MetricasDashboard? _metricas;
   bool _loading = true;
@@ -32,22 +32,111 @@ class _ColmenaAppState extends State<ColmenaApp> {
   AppView _view = AppView.dashboard;
   String? _selectedReporteId;
 
-  // Estado de autenticación (sin backend, solo UI)
   AuthState _authState = AuthState.login;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
+  String? _authError;
 
   Future<void> _loadData() async {
-    final result = await _dataService.loadDashboard();
-    setState(() {
-      _reportes = result.reportes;
-      _metricas = result.metricas;
-      _loading = false;
-    });
+    setState(() => _loading = true);
+
+    // Cargar métricas
+    final metricasResult = await _api.getMetricas();
+    if (metricasResult.isSuccess) {
+      final d = metricasResult.data!;
+      _metricas = MetricasDashboard(
+        totalDenuncias: (d['total_reportes'] as num?)?.toInt() ?? 0,
+        mercurioAcumuladoKg: (d['mercurio_acumulado_kg'] as num?)?.toDouble() ?? 0.0,
+        zonasProtegidasAfectadas: (d['zonas_afectadas'] as num?)?.toInt() ?? 0,
+        porcentajeAnonimas: (d['porcentaje_anonimos'] as num?)?.toInt() ?? 0,
+        denunciasPorMes: const [],
+      );
+    }
+
+    // Cargar reportes
+    final reportesResult = await _api.getReportes(porPagina: 50);
+    if (reportesResult.isSuccess) {
+      final data = reportesResult.data!;
+      final lista = (data['reportes'] as List<dynamic>?) ?? [];
+      _reportes = lista.map((r) => _mapReporte(r as Map<String, dynamic>)).toList();
+    }
+
+    setState(() => _loading = false);
+  }
+
+  Reporte _mapReporte(Map<String, dynamic> json) {
+    return Reporte(
+      id: json['codigo'] as String? ?? '',
+      fecha: DateTime.tryParse(json['fecha_creacion']?.toString() ?? '') ?? DateTime.now(),
+      ubicacion: Ubicacion(
+        lat: (json['latitud'] as num?)?.toDouble() ?? 0.0,
+        lng: (json['longitud'] as num?)?.toDouble() ?? 0.0,
+      ),
+      fotos: const [],
+      tamanoDraga: _parseTamanoDraga(json['tamano_draga_codigo'] as String?),
+      tiempoOperando: _parseTiempoOperando(json['tiempo_operacion_codigo'] as String?),
+      indicadores: IndicadoresVisibles(
+        personasVisibles: json['personas_visibles'] as bool? ?? false,
+        motobombasVisibles: json['motobombas_visibles'] as bool? ?? false,
+      ),
+      notas: json['nota'] as String?,
+      mercurioEstimadoKg: (json['evaluacion'] != null)
+          ? (json['evaluacion']['mercurio_estimado_kg'] as num?)?.toDouble() ?? 0.0
+          : 0.0,
+      zonaProtegida: ZonaProtegida(
+        esZonaProtegida: json['evaluacion']?['zona_codigo'] != null,
+        nombre: json['evaluacion']?['zona_codigo'] as String?,
+      ),
+      normativaCitada: json['evaluacion']?['normativa_codigo'] != null
+          ? [json['evaluacion']['normativa_codigo'] as String]
+          : const [],
+      danoEconomicoEstimado: 0,
+      nivelRiesgo: _parseNivelRiesgo(json['evaluacion']?['nivel_riesgo_codigo'] as String?),
+      estado: _parseEstado(json['estado_codigo'] as String?),
+      tipoContacto: (json['alias_informante'] != null || json['celular_informante'] != null)
+          ? TipoContacto.conContacto
+          : TipoContacto.anonimo,
+      contacto: (json['alias_informante'] != null || json['celular_informante'] != null)
+          ? ContactoReporte(
+              alias: json['alias_informante'] as String?,
+              celular: json['celular_informante'] as String?,
+            )
+          : null,
+    );
+  }
+
+  TamanoDraga _parseTamanoDraga(String? codigo) {
+    return switch (codigo) {
+      'PEQUENA' => TamanoDraga.pequena,
+      'MEDIANA' => TamanoDraga.mediana,
+      'GRANDE' => TamanoDraga.grande,
+      _ => TamanoDraga.mediana,
+    };
+  }
+
+  TiempoOperando _parseTiempoOperando(String? codigo) {
+    return switch (codigo) {
+      'MENOS_1_DIA' => TiempoOperando.menosUnDia,
+      'VARIOS_DIAS' => TiempoOperando.variosDias,
+      'MAS_1_SEMANA' => TiempoOperando.masUnaSemana,
+      _ => TiempoOperando.variosDias,
+    };
+  }
+
+  NivelRiesgo _parseNivelRiesgo(String? codigo) {
+    return switch (codigo) {
+      'BAJO' => NivelRiesgo.bajo,
+      'MEDIO' => NivelRiesgo.medio,
+      'ALTO' => NivelRiesgo.alto,
+      _ => NivelRiesgo.bajo,
+    };
+  }
+
+  EstadoReporte _parseEstado(String? codigo) {
+    return switch (codigo) {
+      'nuevo' => EstadoReporte.nuevo,
+      'revisado' => EstadoReporte.revisado,
+      'escalado' => EstadoReporte.escalado,
+      _ => EstadoReporte.nuevo,
+    };
   }
 
   void _toggleTheme() {
@@ -65,7 +154,6 @@ class _ColmenaAppState extends State<ColmenaApp> {
   void _openReporte(String id) {
     setState(() {
       _selectedReporteId = id;
-      _view = AppView.dashboard;
     });
   }
 
@@ -75,21 +163,53 @@ class _ColmenaAppState extends State<ColmenaApp> {
     });
   }
 
-  void _handleLogin() {
-    setState(() => _authState = AuthState.authenticated);
+  Future<void> _handleLogin(String correo, String contrasena) async {
+    final result = await _api.login(correo, contrasena);
+    if (result.isSuccess) {
+      setState(() {
+        _authState = AuthState.authenticated;
+        _authError = null;
+      });
+      _loadData();
+    } else {
+      setState(() => _authError = result.error);
+    }
   }
 
-  void _handleRegister() {
-    // Después de registrarse, ir al login para que inicie sesión
-    setState(() => _authState = AuthState.login);
+  Future<void> _handleRegister(String nombre, String correo, String contrasena, String rol) async {
+    final result = await _api.register(
+      nombre: nombre,
+      correo: correo,
+      contrasena: contrasena,
+      rolCodigo: rol,
+    );
+    if (result.isSuccess) {
+      setState(() {
+        _authState = AuthState.login;
+        _authError = null;
+      });
+    } else {
+      setState(() => _authError = result.error);
+    }
   }
 
   void _handleLogout() {
+    _api.setToken(null);
     setState(() {
       _authState = AuthState.login;
       _selectedReporteId = null;
       _view = AppView.dashboard;
+      _reportes = [];
+      _metricas = null;
+      _authError = null;
     });
+  }
+
+  Future<void> _handleCambiarEstado(String codigo, String nuevoEstado) async {
+    final result = await _api.cambiarEstado(codigo, nuevoEstado);
+    if (result.isSuccess) {
+      _loadData(); // Recargar datos
+    }
   }
 
   Reporte? get _selectedReporte {
@@ -126,12 +246,20 @@ class _ColmenaAppState extends State<ColmenaApp> {
       case AuthState.login:
         return LoginScreen(
           onLogin: _handleLogin,
-          onGoToRegister: () => setState(() => _authState = AuthState.register),
+          onGoToRegister: () => setState(() {
+            _authState = AuthState.register;
+            _authError = null;
+          }),
+          errorMessage: _authError,
         );
       case AuthState.register:
         return RegisterScreen(
           onRegister: _handleRegister,
-          onGoToLogin: () => setState(() => _authState = AuthState.login),
+          onGoToLogin: () => setState(() {
+            _authState = AuthState.login;
+            _authError = null;
+          }),
+          errorMessage: _authError,
         );
       case AuthState.authenticated:
         return AppShell(
@@ -149,6 +277,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
               : ReportDetailPanel(
                   reporte: _selectedReporte!,
                   onClose: _clearReporteSelection,
+                  onCambiarEstado: _handleCambiarEstado,
                 ),
           child: switch (_view) {
             AppView.dashboard => DashboardScreen(

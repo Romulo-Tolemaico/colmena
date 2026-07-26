@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.onLogin, required this.onGoToRegister});
+  const LoginScreen({super.key, required this.onLogin, required this.onGoToRegister, this.errorMessage});
 
-  final VoidCallback onLogin;
+  final Future<void> Function(String correo, String contrasena) onLogin;
   final VoidCallback onGoToRegister;
+  final String? errorMessage;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -24,18 +25,12 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
-
-    // Simular delay de autenticación (sin backend real)
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
-        setState(() => _loading = false);
-        widget.onLogin();
-      }
-    });
+    await widget.onLogin(_emailController.text.trim(), _passwordController.text);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -228,6 +223,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: const Text('¿Olvidaste tu contraseña?'),
                           ),
                         ),
+                        if (widget.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              widget.errorMessage!,
+                              style: TextStyle(color: theme.colorScheme.onErrorContainer, fontSize: 13),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         FilledButton(
                           onPressed: _loading ? null : _submit,

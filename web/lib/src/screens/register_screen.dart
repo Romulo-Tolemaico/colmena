@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key, required this.onRegister, required this.onGoToLogin});
+  const RegisterScreen({super.key, required this.onRegister, required this.onGoToLogin, this.errorMessage});
 
-  final VoidCallback onRegister;
+  final Future<void> Function(String nombre, String correo, String contrasena, String rol) onRegister;
   final VoidCallback onGoToLogin;
+  final String? errorMessage;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -19,7 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _loading = false;
-  String _selectedRole = 'monitor';
+  String _selectedRole = 'ANALISTA';
 
   @override
   void dispose() {
@@ -30,18 +31,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
-
-    // Simular delay de registro (sin backend real)
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (mounted) {
-        setState(() => _loading = false);
-        widget.onRegister();
-      }
-    });
+    await widget.onRegister(
+      _nameController.text.trim(),
+      _emailController.text.trim(),
+      _passwordController.text,
+      _selectedRole,
+    );
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -217,9 +217,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             border: OutlineInputBorder(),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'monitor', child: Text('Monitor comunitario')),
-                            DropdownMenuItem(value: 'verificador', child: Text('Verificador')),
-                            DropdownMenuItem(value: 'coordinador', child: Text('Coordinador regional')),
+                            DropdownMenuItem(value: 'ANALISTA', child: Text('Analista')),
+                            DropdownMenuItem(value: 'ADMIN', child: Text('Administrador')),
                           ],
                           onChanged: (value) {
                             if (value != null) setState(() => _selectedRole = value);
@@ -243,8 +242,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             if (value == null || value.isEmpty) {
                               return 'Ingresa una contraseña';
                             }
-                            if (value.length < 6) {
-                              return 'Mínimo 6 caracteres';
+                            if (value.length < 8) {
+                              return 'Mínimo 8 caracteres';
                             }
                             return null;
                           },
@@ -273,6 +272,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
+                        if (widget.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              widget.errorMessage!,
+                              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 13),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         FilledButton(
                           onPressed: _loading ? null : _submit,
