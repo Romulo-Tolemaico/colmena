@@ -86,7 +86,15 @@ async fn salud() -> &'static str {
 
 /// Construye la capa de CORS a partir de la lista de orígenes permitidos
 /// configurada por variable de entorno (`CORS_ORIGENES`).
+/// Si el primer origen es "*", permite cualquier origen (solo para desarrollo).
 fn construir_cors(origenes: &[String]) -> CorsLayer {
+    if origenes.iter().any(|o| o.trim() == "*") {
+        return CorsLayer::new()
+            .allow_origin(tower_http::cors::Any)
+            .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
+            .allow_headers(tower_http::cors::Any);
+    }
+
     let origenes_validos: Vec<_> = origenes
         .iter()
         .filter_map(|origen| origen.parse().ok())
@@ -94,6 +102,6 @@ fn construir_cors(origenes: &[String]) -> CorsLayer {
 
     CorsLayer::new()
         .allow_origin(origenes_validos)
-        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
         .allow_headers(tower_http::cors::Any)
 }
