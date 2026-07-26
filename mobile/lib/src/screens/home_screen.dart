@@ -19,10 +19,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final MobileApiService _api = MobileApiService(
-    // En dispositivo físico con USB, usar la IP de tu PC en la red local.
-    // En emulador Android: 10.0.2.2 apunta a localhost del host.
-    // Cambia esto por tu IP local si pruebas en celular físico:
-    baseUrl: 'http://10.0.2.2:3000/api/v1',
+    // IP local de tu PC en WiFi — celular y PC deben estar en la misma red.
+    // Si usas emulador Android, cambia a: http://10.0.2.2:3000/api/v1
+    baseUrl: 'http://192.168.100.160:3000/api/v1',
   );
 
   List<Registro> _registros = [];
