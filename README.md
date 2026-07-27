@@ -23,18 +23,73 @@ Colmena democratiza el monitoreo ambiental mediante:
 ## Arquitectura
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   App Móvil     │     │    API Backend   │     │   Panel Web     │
-│   (Flutter)     │────>│  (Rust/Axum)     │<────│   (Flutter)     │
-│   Android       │     │  PostgreSQL +    │     │   Chrome/Edge   │
-│                 │     │  PostGIS         │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                              │
-                              ▼
-                        ┌─────────────┐
-                        │  Groq API   │
-                        │ (Llama 3.3) │
-                        └─────────────┘
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                          COLMENA - Arquitectura del Sistema                     ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+  ┌──────────────────────┐                              ┌──────────────────────┐
+  │    📱 APP MÓVIL      │                              │    🖥️ PANEL WEB      │
+  │    (Abeja)           │                              │    (Colmena)         │
+  ├──────────────────────┤                              ├──────────────────────┤
+  │ • Flutter (Android)  │                              │ • Flutter Web        │
+  │ • Cámara + GPS       │                              │ • Dashboard          │
+  │ • Offline-first      │                              │ • Mapa interactivo   │
+  │ • 5 pasos captura    │                              │ • Métricas           │
+  │ • Modo oscuro        │                              │ • Historial          │
+  │ • Multilenguaje      │                              │ • Chatbot IA         │
+  └──────────┬───────────┘                              └──────────┬───────────┘
+             │ HTTPS (REST API)                                    │ HTTPS (REST API + JWT)
+             │                                                     │
+             ▼                                                     ▼
+  ╔══════════════════════════════════════════════════════════════════════════════╗
+  ║                         🦀 API BACKEND (Rust + Axum)                        ║
+  ╠══════════════════════════════════════════════════════════════════════════════╣
+  ║                                                                             ║
+  ║  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       ║
+  ║  │  Reportes   │  │  Usuarios   │  │  Dashboard  │  │   Agente    │       ║
+  ║  │  CRUD +     │  │  Auth JWT   │  │  Métricas   │  │   IA/Reglas │       ║
+  ║  │  Fotos/PDF  │  │  Login      │  │  GeoJSON    │  │   Evaluación│       ║
+  ║  │  Sync batch │  │  Refresh    │  │  Chat IA    │  │   Automática│       ║
+  ║  └─────────────┘  └─────────────┘  └─────────────┘  └──────┬──────┘       ║
+  ║                                                              │              ║
+  ╚══════════════════════════════════════════════════════════════════════════════╝
+             │                                                   │
+             ▼                                                   ▼
+  ┌──────────────────────┐                       ┌──────────────────────┐
+  │  🐘 PostgreSQL       │                       │  🤖 Groq API         │
+  │  + PostGIS           │                       │  (Llama 3.3 70B)     │
+  ├──────────────────────┤                       ├──────────────────────┤
+  │ • Reportes + coords  │                       │ • Chatbot IA         │
+  │ • Evaluaciones       │                       │ • Contexto del       │
+  │ • Fotos (rutas)      │                       │   sistema inyectado  │
+  │ • Usuarios + roles   │                       │ • Solo temas         │
+  │ • Zonas protegidas   │                       │   ambientales        │
+  │ • Normativa          │                       │ • Respuesta <500ms   │
+  │ • Consultas geo      │                       │                      │
+  └──────────────────────┘                       └──────────────────────┘
+
+  ┌──────────────────────┐                       ┌──────────────────────┐
+  │  🗺️ OpenStreetMap    │                       │  ☁️ Render           │
+  ├──────────────────────┤                       ├──────────────────────┤
+  │ • Tiles de mapa      │                       │ • Deploy automático  │
+  │ • Sin API key        │                       │ • Desde rama main    │
+  │ • Gratuito           │                       │ • Free tier          │
+  └──────────────────────┘                       └──────────────────────┘
+```
+
+### Flujo de datos
+
+```
+USUARIO (Comunidad)                    ANALISTA (Organización)
+       │                                        │
+       ▼                                        ▼
+  ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
+  │ Captura │────>│ Envío   │────>│ Análisis│────>│ Gestión │
+  │ Fotos + │     │ API +   │     │ IA auto │     │ Estado  │
+  │ GPS +   │     │ Fotos   │     │ mercurio│     │ PDF     │
+  │ Datos   │     │         │     │ riesgo  │     │ Alertas │
+  └─────────┘     └─────────┘     └─────────┘     └─────────┘
+  App Móvil        Backend         Agente IA        Panel Web
 ```
 
 ## Stack tecnológico
@@ -53,7 +108,7 @@ Colmena democratiza el monitoreo ambiental mediante:
 
 ## Funcionalidades
 
-### App Móvil (Abeja)
+### App Móvil (colmena)
 - Onboarding educativo (primera vez)
 - Pantalla de inicio tipo dashboard con información del proyecto
 - Captura de fotos (cámara + galería) con GPS automático
