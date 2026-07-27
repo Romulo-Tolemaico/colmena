@@ -1,3 +1,5 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 
 import '../models/reporte.dart';
@@ -246,18 +248,19 @@ class _ReportDetailPanelState extends State<ReportDetailPanel> {
                       if (widget.onGenerarPdf != null) {
                         final url = await widget.onGenerarPdf!(widget.reporte.id);
                         if (url != null && context.mounted) {
+                          // Abrir PDF en nueva pestaña del navegador
+                          _abrirUrl(url);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('PDF generado: $url'),
+                            const SnackBar(
+                              content: Text('PDF generado. Abriendo en nueva pestaña...'),
                               behavior: SnackBarBehavior.floating,
-                              action: SnackBarAction(label: 'Abrir', onPressed: () {}),
                             ),
                           );
                         }
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Generación de PDF disponible cuando se conecte el backend.'),
+                            content: Text('Generación de PDF no disponible.'),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -382,4 +385,8 @@ String _riskLabel(NivelRiesgo risk) {
     NivelRiesgo.medio => 'Medio',
     NivelRiesgo.alto => 'Alto',
   };
+}
+
+void _abrirUrl(String url) {
+  html.window.open(url, '_blank');
 }
