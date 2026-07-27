@@ -43,9 +43,6 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth >= 1180;
 
     return Scaffold(
       body: SafeArea(
@@ -118,47 +115,9 @@ class AppShell extends StatelessWidget {
                       Expanded(
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 250),
-                          child: isWide && detailPane != null
-                              ? Row(
-                                  key: const ValueKey('wide-shell'),
-                                  children: [
-                                    Expanded(flex: 7, child: child),
-                                    Container(
-                                      width: 380,
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.surface,
-                                        border: Border(left: BorderSide(color: colorScheme.outlineVariant)),
-                                      ),
-                                      child: detailPane,
-                                    ),
-                                  ],
-                                )
-                              : Stack(
-                                  key: const ValueKey('compact-shell'),
-                                  children: [
-                                    Positioned.fill(child: child),
-                                    if (detailPane != null)
-                                      Align(
-                                        alignment: Alignment.bottomCenter,
-                                        child: Container(
-                                          margin: const EdgeInsets.all(16),
-                                          constraints: const BoxConstraints(maxHeight: 360),
-                                          decoration: BoxDecoration(
-                                            color: colorScheme.surface,
-                                            borderRadius: BorderRadius.circular(20),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.14),
-                                                blurRadius: 20,
-                                                offset: const Offset(0, 8),
-                                              ),
-                                            ],
-                                          ),
-                                          child: detailPane,
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                          child: detailPane != null
+                              ? detailPane
+                              : child,
                         ),
                       ),
                     ],
