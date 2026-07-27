@@ -181,16 +181,16 @@ class _Sidebar extends StatelessWidget {
             child: sidebarCollapsed
                 ? Column(
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: colorScheme.primary,
-                        child: Text('C', style: textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 8),
                       IconButton(
                         onPressed: onToggleSidebar,
                         icon: const Icon(Icons.menu),
                         tooltip: 'Expandir menú',
+                      ),
+                      const SizedBox(height: 8),
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: colorScheme.primary,
+                        child: Text('C', style: textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   )
