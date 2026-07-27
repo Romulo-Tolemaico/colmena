@@ -398,62 +398,91 @@ class _RegistroCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(14),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.image_outlined, color: theme.colorScheme.primary, size: 28),
+              // Fila 1: ID + sync + riesgo
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.description_outlined, color: theme.colorScheme.primary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          registro.id.length > 8 ? registro.id.substring(0, 8) : registro.id,
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        Text(_formatDate(registro.fecha), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  if (registro.nivelRiesgo != null) ...[
+                    _RiskDot(riesgo: registro.nivelRiesgo!),
+                    const SizedBox(width: 8),
+                  ],
+                  SyncStatusBadge(estado: registro.estadoSync),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            registro.id.length > 8 ? registro.id.substring(0, 8) : registro.id,
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        SyncStatusBadge(estado: registro.estadoSync),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDate(registro.fecha),
+              const SizedBox(height: 10),
+
+              // Fila 2: info chips (draga, tiempo, indicadores)
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  _MiniChip(icon: Icons.directions_boat_outlined, label: _dragaLabel(registro.tamanoDraga)),
+                  _MiniChip(icon: Icons.access_time, label: _tiempoLabel(registro.tiempoOperando)),
+                  if (registro.indicadores.personasVisibles)
+                    _MiniChip(icon: Icons.people_outlined, label: 'Personas'),
+                  if (registro.indicadores.motobombasVisibles)
+                    _MiniChip(icon: Icons.engineering_outlined, label: 'Motobombas'),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Fila 3: ubicación + mercurio
+              Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      registro.ubicacion.toString(),
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            registro.ubicacion.toString(),
-                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (registro.nivelRiesgo != null) ...[
-                          const SizedBox(width: 8),
-                          _RiskDot(riesgo: registro.nivelRiesgo!),
-                        ],
-                      ],
+                  ),
+                  if (registro.mercurioEstimadoKg != null && registro.mercurioEstimadoKg! > 0) ...[
+                    Icon(Icons.science_outlined, size: 13, color: Colors.red.shade400),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${registro.mercurioEstimadoKg!.toStringAsFixed(1)} kg',
+                      style: TextStyle(color: Colors.red.shade400, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+
+              // Notas preview
+              if (registro.notas != null && registro.notas!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  registro.notas!,
+                  style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: theme.colorScheme.onSurfaceVariant),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
           ),
         ),
@@ -497,3 +526,42 @@ String _formatDate(DateTime date) {
   final months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   return '${date.day} ${months[date.month - 1]} ${date.year}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 }
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 3),
+          Text(label, style: theme.textTheme.bodySmall?.copyWith(fontSize: 10)),
+        ],
+      ),
+    );
+  }
+}
+
+String _dragaLabel(TamanoDraga t) => switch (t) {
+      TamanoDraga.pequena => 'Pequeña',
+      TamanoDraga.mediana => 'Mediana',
+      TamanoDraga.grande => 'Grande',
+    };
+
+String _tiempoLabel(TiempoOperando t) => switch (t) {
+      TiempoOperando.menosUnDia => '<1 día',
+      TiempoOperando.variosDias => 'Varios días',
+      TiempoOperando.masUnaSemana => '+1 semana',
+    };
