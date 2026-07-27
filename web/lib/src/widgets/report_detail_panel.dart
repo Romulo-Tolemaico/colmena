@@ -66,289 +66,265 @@ class _ReportDetailPanelState extends State<ReportDetailPanel> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final reporte = widget.reporte;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth >= 900;
 
     return Material(
       color: theme.colorScheme.surface,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant)),
+            ),
             child: Row(
               children: [
+                IconButton(
+                  onPressed: widget.onClose,
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Volver',
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Detalle del reporte', style: theme.textTheme.titleLarge),
-                      Text(reporte.id, style: theme.textTheme.bodyMedium),
+                      Text('Detalle del reporte', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(reporte.id, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.close),
+                _EstadoChip(estado: _estado),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: () async {
+                    if (widget.onGenerarPdf != null) {
+                      final url = await widget.onGenerarPdf!(widget.reporte.id);
+                      if (url != null && context.mounted) {
+                        _abrirUrl(url);
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('PDF'),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+
+          // Body
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Estado y tipo de contacto
-                _DetailSection(
-                  title: 'Estado y clasificación',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Estado del reporte con botones para cambiar
-                      Row(
-                        children: [
-                          Text('Estado: ', style: theme.textTheme.bodyMedium),
-                          const SizedBox(width: 8),
-                          _EstadoChip(estado: _estado),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text('Cambiar estado:', style: theme.textTheme.labelMedium),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          _EstadoButton(
-                            label: 'Nuevo',
-                            estado: EstadoReporte.nuevo,
-                            currentEstado: _estado,
-                            onPressed: () => _changeEstado(EstadoReporte.nuevo),
-                          ),
-                          _EstadoButton(
-                            label: 'Revisado',
-                            estado: EstadoReporte.revisado,
-                            currentEstado: _estado,
-                            onPressed: () => _changeEstado(EstadoReporte.revisado),
-                          ),
-                          _EstadoButton(
-                            label: 'Escalado',
-                            estado: EstadoReporte.escalado,
-                            currentEstado: _estado,
-                            onPressed: () => _changeEstado(EstadoReporte.escalado),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Tipo de contacto
-                      Row(
-                        children: [
-                          Icon(
-                            reporte.tipoContacto == TipoContacto.anonimo
-                                ? Icons.visibility_off_outlined
-                                : Icons.person_outlined,
-                            size: 18,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            reporte.tipoContacto == TipoContacto.anonimo
-                                ? 'Reporte anónimo'
-                                : 'Con contacto: ${reporte.contacto?.alias ?? 'Sin alias'}',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                      if (reporte.contacto?.celular != null) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const SizedBox(width: 24),
-                            Icon(Icons.phone_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Text(reporte.contacto!.celular!, style: theme.textTheme.bodySmall),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                // Ubicación y mapa
-                _DetailSection(
-                  title: 'Ubicación y contexto',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Latitud: ${reporte.ubicacion.lat.toStringAsFixed(4)}'),
-                      Text('Longitud: ${reporte.ubicacion.lng.toStringAsFixed(4)}'),
-                      const SizedBox(height: 8),
-                      MiniMapWidget(reporte: reporte),
-                    ],
-                  ),
-                ),
-
-                // Impacto
-                _DetailSection(
-                  title: 'Impacto estimado',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ImpactRow(icon: Icons.science_outlined, label: 'Mercurio', value: '${reporte.mercurioEstimadoKg.toStringAsFixed(1)} kg'),
-                      const SizedBox(height: 6),
-                      _ImpactRow(icon: Icons.attach_money, label: 'Daño económico', value: 'Bs ${reporte.danoEconomicoEstimado.toStringAsFixed(0)}'),
-                      const SizedBox(height: 6),
-                      _ImpactRow(icon: Icons.warning_amber, label: 'Riesgo', value: _riskLabel(reporte.nivelRiesgo)),
-                      const SizedBox(height: 6),
-                      _ImpactRow(
-                        icon: Icons.shield_outlined,
-                        label: 'Zona protegida',
-                        value: reporte.zonaProtegida.esZonaProtegida
-                            ? 'Sí — ${reporte.zonaProtegida.nombre ?? ''}'
-                            : 'No',
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Evidencia
-                _DetailSection(
-                  title: 'Evidencia',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_fotos.isNotEmpty)
-                        SizedBox(
-                          height: 160,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _fotos.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 8),
-                            itemBuilder: (context, index) => ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(_fotos[index], height: 160, width: 220, fit: BoxFit.cover),
-                            ),
-                          ),
-                        )
-                      else if (reporte.fotos.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: Image.network(reporte.fotos.first, fit: BoxFit.cover),
-                          ),
-                        )
-                      else
-                        Container(
-                          height: 100,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.image_not_supported_outlined, size: 32, color: theme.colorScheme.onSurfaceVariant),
-                              const SizedBox(height: 4),
-                              Text('Sin fotos', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-                      Text(reporte.notas ?? 'Sin notas adicionales.'),
-                    ],
-                  ),
-                ),
-
-                // Normativa citada
-                if (reporte.normativaCitada.isNotEmpty)
-                  _DetailSection(
-                    title: 'Normativa citada',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: reporte.normativaCitada
-                          .map((n) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.gavel, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                                    const SizedBox(width: 8),
-                                    Text(n, style: theme.textTheme.bodyMedium),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-
-                // Botón descargar PDF
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      if (widget.onGenerarPdf != null) {
-                        final url = await widget.onGenerarPdf!(widget.reporte.id);
-                        if (url != null && context.mounted) {
-                          // Abrir PDF en nueva pestaña del navegador
-                          _abrirUrl(url);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('PDF generado. Abriendo en nueva pestaña...'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Generación de PDF no disponible.'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text('Descargar reporte PDF'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
+            child: isWide ? _buildWideLayout(theme, reporte) : _buildNarrowLayout(theme, reporte),
           ),
         ],
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildWideLayout(ThemeData theme, Reporte reporte) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Columna izquierda: mapa + evidencia
+        Expanded(
+          flex: 5,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Mapa grande
+                Text('Ubicación', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: theme.colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Text('${reporte.ubicacion.lat.toStringAsFixed(6)}, ${reporte.ubicacion.lng.toStringAsFixed(6)}', style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(height: 280, child: MiniMapWidget(reporte: reporte)),
+                const SizedBox(height: 24),
 
-class _DetailSection extends StatelessWidget {
-  const _DetailSection({required this.title, required this.child});
+                // Evidencia fotográfica
+                Text('Evidencia fotográfica', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                _buildFotosSection(theme, reporte),
+                const SizedBox(height: 24),
 
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              child,
-            ],
+                // Notas
+                if (reporte.notas != null && reporte.notas!.isNotEmpty) ...[
+                  Text('Notas del monitor', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(reporte.notas!, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
+
+        // Divider vertical
+        Container(width: 1, color: theme.colorScheme.outlineVariant),
+
+        // Columna derecha: datos + acciones
+        Expanded(
+          flex: 4,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _buildDetailsColumn(theme, reporte),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(ThemeData theme, Reporte reporte) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 200, child: MiniMapWidget(reporte: reporte)),
+          const SizedBox(height: 20),
+          _buildFotosSection(theme, reporte),
+          const SizedBox(height: 20),
+          _buildDetailsColumn(theme, reporte),
+        ],
       ),
     );
   }
+
+  Widget _buildFotosSection(ThemeData theme, Reporte reporte) {
+    if (_fotos.isNotEmpty) {
+      return SizedBox(
+        height: 180,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _fotos.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, index) => ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.network(_fotos[index], height: 180, width: 260, fit: BoxFit.cover),
+          ),
+        ),
+      );
+    }
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_not_supported_outlined, size: 36, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 6),
+          Text('Sin fotos adjuntas', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsColumn(ThemeData theme, Reporte reporte) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Estado y cambio
+        Text('Estado y clasificación', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Text('Cambiar estado:', style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            _EstadoButton(label: 'Nuevo', estado: EstadoReporte.nuevo, currentEstado: _estado, onPressed: () => _changeEstado(EstadoReporte.nuevo)),
+            _EstadoButton(label: 'Revisado', estado: EstadoReporte.revisado, currentEstado: _estado, onPressed: () => _changeEstado(EstadoReporte.revisado)),
+            _EstadoButton(label: 'Escalado', estado: EstadoReporte.escalado, currentEstado: _estado, onPressed: () => _changeEstado(EstadoReporte.escalado)),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Contacto
+        Row(
+          children: [
+            Icon(
+              reporte.tipoContacto == TipoContacto.anonimo ? Icons.visibility_off_outlined : Icons.person_outlined,
+              size: 18, color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              reporte.tipoContacto == TipoContacto.anonimo ? 'Reporte anónimo' : 'Con contacto: ${reporte.contacto?.alias ?? ''}',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        if (reporte.contacto?.celular != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 26, top: 4),
+            child: Text('Tel: ${reporte.contacto!.celular}', style: theme.textTheme.bodySmall),
+          ),
+
+        const SizedBox(height: 20),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // Impacto
+        Text('Impacto estimado', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        _ImpactRow(icon: Icons.science_outlined, label: 'Mercurio', value: '${reporte.mercurioEstimadoKg.toStringAsFixed(1)} kg'),
+        _ImpactRow(icon: Icons.attach_money, label: 'Daño económico', value: 'Bs ${reporte.danoEconomicoEstimado.toStringAsFixed(0)}'),
+        _ImpactRow(icon: Icons.warning_amber, label: 'Riesgo', value: _riskLabel(reporte.nivelRiesgo)),
+        _ImpactRow(icon: Icons.shield_outlined, label: 'Zona protegida', value: reporte.zonaProtegida.esZonaProtegida ? 'Sí — ${reporte.zonaProtegida.nombre ?? ''}' : 'No'),
+
+        const SizedBox(height: 20),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // Datos capturados
+        Text('Datos capturados', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        _ImpactRow(icon: Icons.directions_boat_outlined, label: 'Tamaño draga', value: _dragaLabel(reporte.tamanoDraga)),
+        _ImpactRow(icon: Icons.access_time, label: 'Tiempo operando', value: _tiempoLabel(reporte.tiempoOperando)),
+        _ImpactRow(icon: Icons.people_outlined, label: 'Personas visibles', value: reporte.indicadores.personasVisibles ? 'Sí' : 'No'),
+        _ImpactRow(icon: Icons.engineering_outlined, label: 'Motobombas', value: reporte.indicadores.motobombasVisibles ? 'Sí' : 'No'),
+
+        // Normativa
+        if (reporte.normativaCitada.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text('Normativa citada', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ...reporte.normativaCitada.map((n) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.gavel, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Flexible(child: Text(n, style: theme.textTheme.bodyMedium)),
+                  ],
+                ),
+              )),
+        ],
+      ],
+    );
+  }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _EstadoChip extends StatelessWidget {
   const _EstadoChip({required this.estado});
@@ -426,6 +402,18 @@ String _riskLabel(NivelRiesgo risk) {
     NivelRiesgo.alto => 'Alto',
   };
 }
+
+String _dragaLabel(TamanoDraga t) => switch (t) {
+      TamanoDraga.pequena => 'Pequeña',
+      TamanoDraga.mediana => 'Mediana',
+      TamanoDraga.grande => 'Grande',
+    };
+
+String _tiempoLabel(TiempoOperando t) => switch (t) {
+      TiempoOperando.menosUnDia => 'Menos de 1 día',
+      TiempoOperando.variosDias => 'Varios días',
+      TiempoOperando.masUnaSemana => 'Más de una semana',
+    };
 
 void _abrirUrl(String url) {
   html.window.open(url, '_blank');
