@@ -24,6 +24,12 @@ pub struct Reporte {
     pub estado_codigo: String,
     pub fecha_creacion: NaiveDate,
     pub hora_creacion: NaiveTime,
+    /// Alias opcional del informante (viene de la tabla débil `contacto_informante`).
+    pub alias_informante: Option<String>,
+    /// Celular opcional del informante (viene de la tabla débil `contacto_informante`).
+    pub celular_informante: Option<String>,
+    /// Nota libre opcional (viene de la tabla débil `notas_reporte`).
+    pub nota: Option<String>,
 }
 
 /// Detalle completo de un reporte, incluyendo su evaluación si ya existe.
