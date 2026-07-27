@@ -297,7 +297,9 @@ class _ColmenaAppState extends State<ColmenaApp> {
 
   Future<void> _handleCambiarEstado(String codigo, String nuevoEstado) async {
     final result = await _api.cambiarEstado(codigo, nuevoEstado);
-    if (result.isSuccess) _loadData();
+    if (result.isSuccess) {
+      _loadData();
+    }
   }
 
   Reporte? get _selectedReporte {
