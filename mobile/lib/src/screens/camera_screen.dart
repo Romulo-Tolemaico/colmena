@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 /// Pantalla de captura de evidencia.
 /// Permite tomar fotos con la cámara del dispositivo o elegir de la galería.
@@ -137,12 +139,41 @@ class _CameraScreenState extends State<CameraScreen> {
 
   void _continue() {
     if (_photos.isEmpty) return;
-    // Retornar fotos y posición GPS
     Navigator.of(context).pop({
       'photos': _photos.map((f) => f.path).toList(),
       'lat': _position?.latitude,
       'lng': _position?.longitude,
     });
+  }
+
+  Future<void> _ajustarEnMapa() async {
+    final initialLat = _position?.latitude ?? -11.4;
+    final initialLng = _position?.longitude ?? -67.5;
+
+    final result = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => _MapPickerScreen(initialPosition: LatLng(initialLat, initialLng)),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _position = Position(
+          latitude: result.latitude,
+          longitude: result.longitude,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+        _gpsError = null;
+        _loadingGps = false;
+      });
+    }
   }
 
   @override
@@ -202,6 +233,7 @@ class _CameraScreenState extends State<CameraScreen> {
               loading: _loadingGps,
               error: _gpsError,
               onRetry: _obtenerUbicacion,
+              onAjustar: _ajustarEnMapa,
             ),
 
             const SizedBox(height: 20),
@@ -300,12 +332,13 @@ class _CameraScreenState extends State<CameraScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _GpsCard extends StatelessWidget {
-  const _GpsCard({required this.position, required this.loading, required this.error, required this.onRetry});
+  const _GpsCard({required this.position, required this.loading, required this.error, required this.onRetry, required this.onAjustar});
 
   final Position? position;
   final bool loading;
   final String? error;
   final VoidCallback onRetry;
+  final VoidCallback onAjustar;
 
   @override
   Widget build(BuildContext context) {
@@ -347,15 +380,11 @@ class _GpsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(error!, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red.shade700)),
-                  Text('El reporte se guardará sin ubicación exacta', style: theme.textTheme.bodySmall),
+                  Text('Puedes seleccionar la ubicación manualmente', style: theme.textTheme.bodySmall),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 20),
-              tooltip: 'Reintentar',
-            ),
+            IconButton(onPressed: onRetry, icon: const Icon(Icons.refresh, size: 20), tooltip: 'Reintentar'),
           ],
         ),
       );
@@ -414,17 +443,24 @@ class _GpsCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    'Precisión',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  Text(
-                    '±${position!.accuracy.toStringAsFixed(0)} m',
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                  ),
+                  Text('Precisión', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  Text('±${position!.accuracy.toStringAsFixed(0)} m', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                 ],
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onAjustar,
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: const Text('Ajustar ubicación en mapa'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                textStyle: const TextStyle(fontSize: 13),
+              ),
+            ),
           ),
         ],
       ),
@@ -492,6 +528,111 @@ class _PhotoThumbnail extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Pantalla de selección de ubicación en mapa.
+/// El usuario puede mover el mapa y tocar para colocar un pin.
+class _MapPickerScreen extends StatefulWidget {
+  const _MapPickerScreen({required this.initialPosition});
+
+  final LatLng initialPosition;
+
+  @override
+  State<_MapPickerScreen> createState() => _MapPickerScreenState();
+}
+
+class _MapPickerScreenState extends State<_MapPickerScreen> {
+  late LatLng _selectedPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPosition = widget.initialPosition;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Seleccionar ubicación'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_selectedPosition),
+            child: const Text('Confirmar'),
+          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: _selectedPosition,
+              initialZoom: 12,
+              onTap: (tapPosition, point) {
+                setState(() => _selectedPosition = point);
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.colmena.mobile',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _selectedPosition,
+                    width: 50,
+                    height: 50,
+                    child: const Icon(Icons.location_pin, color: Colors.red, size: 50),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Info bar
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -2))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.touch_app, size: 18, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text('Toca el mapa para mover el pin', style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 18, color: Colors.green),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Lat: ${_selectedPosition.latitude.toStringAsFixed(6)}, Lng: ${_selectedPosition.longitude.toStringAsFixed(6)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
