@@ -82,7 +82,12 @@ async fn login(
         .verify_password(peticion.contrasena.as_bytes(), &hash_almacenado)
         .map_err(|_| ErrorApi::CredencialesInvalidas)?;
 
-    let token = generar_token(&usuario.codigo.to_string(), &usuario.rol_codigo, &estado.configuracion.jwt_secret)?;
+    let token = generar_token(
+        &usuario.codigo.to_string(),
+        &usuario.nombre,
+        &usuario.rol_codigo,
+        &estado.configuracion.jwt_secret,
+    )?;
 
     Ok(RespuestaExitosa::ok(TokenRespuesta {
         token,
@@ -118,7 +123,12 @@ async fn refrescar_token(
         .await?
         .ok_or(ErrorApi::NoAutenticado)?;
 
-    let token = generar_token(&usuario.codigo.to_string(), &usuario.rol_codigo, &estado.configuracion.jwt_secret)?;
+    let token = generar_token(
+        &usuario.codigo.to_string(),
+        &usuario.nombre,
+        &usuario.rol_codigo,
+        &estado.configuracion.jwt_secret,
+    )?;
 
     Ok(RespuestaExitosa::ok(TokenRespuesta {
         token,
@@ -127,10 +137,11 @@ async fn refrescar_token(
 }
 
 /// Genera un JWT firmado con HS256 para el usuario indicado.
-fn generar_token(codigo_usuario: &str, rol: &str, jwt_secret: &str) -> Result<String, ErrorApi> {
+fn generar_token(codigo_usuario: &str, nombre: &str, rol: &str, jwt_secret: &str) -> Result<String, ErrorApi> {
     let expiracion = (chrono::Utc::now().timestamp() + DURACION_TOKEN_SEGUNDOS) as usize;
     let claims = ClaimsJwt {
         sub: codigo_usuario.to_string(),
+        nombre: nombre.to_string(),
         rol: rol.to_string(),
         exp: expiracion,
     };

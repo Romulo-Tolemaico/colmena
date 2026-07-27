@@ -81,6 +81,9 @@ pub struct RefrescarTokenPeticion {
 pub struct ClaimsJwt {
     /// Código (UUID) del usuario, como subject del token.
     pub sub: String,
+    /// Nombre del usuario, para que los clientes lo muestren sin tener
+    /// que pedirlo de nuevo al servidor.
+    pub nombre: String,
     /// Rol del usuario, para autorización basada en roles si se necesita.
     pub rol: String,
     /// Fecha de expiración del token (timestamp UNIX).
