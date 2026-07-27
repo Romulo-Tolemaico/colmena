@@ -13,6 +13,9 @@ use axum::{
 };
 use uuid::Uuid;
 
+use axum::extract::Multipart;
+
+use crate::agent::reglas;
 use crate::error::ErrorApi;
 use crate::estado::EstadoApp;
 use crate::evaluaciones::consultas as consultas_evaluaciones;
@@ -21,6 +24,8 @@ use crate::respuesta::RespuestaExitosa;
 use crate::usuarios::modelo::ClaimsJwt;
 
 use super::consultas::{self, NuevoReporte};
+use super::fotos;
+use super::pdf;
 use super::modelo::{
     CambiarEstadoPeticion, CrearReportePeticion, FiltrosListadoReportes, ListadoReportesRespuesta,
     ReporteDetalle, SincronizarReportesPeticion, SincronizarReportesRespuesta,
@@ -44,6 +49,8 @@ pub fn rutas() -> Router<EstadoApp> {
         .route("/", post(crear_reporte).get(listar_reportes))
         .route("/sync", post(sincronizar_reportes))
         .route("/{codigo}", get(obtener_detalle))
+        .route("/{codigo}/fotos", post(subir_fotos).get(listar_fotos))
+        .route("/{codigo}/pdf", post(generar_pdf))
         .merge(rutas_protegidas)
 }
 
@@ -57,6 +64,13 @@ async fn crear_reporte(
     peticion.validate()?;
 
     let reporte = consultas::crear_reporte(&estado.pool, datos_desde_peticion(&peticion)).await?;
+
+    // El agente evalúa el reporte automáticamente al crearlo. Si la
+    // evaluación falla, se registra el error pero no se revierte la
+    // creación del reporte (el reporte queda sin evaluación por ahora).
+    if let Err(error) = reglas::evaluar_reporte(&estado.pool, reporte.codigo).await {
+        tracing::error!(?error, codigo = %reporte.codigo, "no se pudo evaluar el reporte automáticamente");
+    }
 
     Ok(RespuestaExitosa::creado(reporte))
 }
@@ -73,6 +87,9 @@ async fn sincronizar_reportes(
     let mut creados = Vec::with_capacity(peticion.reportes.len());
     for item in &peticion.reportes {
         let reporte = consultas::crear_reporte(&estado.pool, datos_desde_peticion(item)).await?;
+        if let Err(error) = reglas::evaluar_reporte(&estado.pool, reporte.codigo).await {
+            tracing::error!(?error, codigo = %reporte.codigo, "no se pudo evaluar el reporte automáticamente");
+        }
         creados.push(reporte.codigo);
     }
 
@@ -143,6 +160,44 @@ async fn cambiar_estado(
         .ok_or_else(|| ErrorApi::NoEncontrado("reporte".to_string()))?;
 
     Ok(RespuestaExitosa::ok(reporte))
+}
+
+/// `POST /api/v1/reportes/:codigo/fotos` — sube una o más fotos de
+/// evidencia para un reporte (multipart/form-data). Sin autenticación de
+/// usuario, pensado para la app mobile de la Abeja. Las fotos se guardan
+/// en el disco local del servidor (ver advertencia sobre filesystem
+/// efímero de Render en `reportes::fotos`).
+async fn subir_fotos(
+    State(estado): State<EstadoApp>,
+    Path(codigo): Path<Uuid>,
+    multipart: Multipart,
+) -> Result<impl axum::response::IntoResponse, ErrorApi> {
+    let rutas = fotos::guardar_fotos(&estado.pool, &estado.configuracion.carpeta_archivos, codigo, multipart).await?;
+
+    Ok(RespuestaExitosa::creado(serde_json::json!({ "fotos": rutas })))
+}
+
+/// `GET /api/v1/reportes/:codigo/fotos` — lista las rutas de las fotos de
+/// un reporte (relativas a `/archivos/`, servidas como archivos estáticos).
+async fn listar_fotos(
+    State(estado): State<EstadoApp>,
+    Path(codigo): Path<Uuid>,
+) -> Result<impl axum::response::IntoResponse, ErrorApi> {
+    let rutas = fotos::listar_fotos(&estado.pool, codigo).await?;
+
+    Ok(RespuestaExitosa::ok(serde_json::json!({ "fotos": rutas })))
+}
+
+/// `POST /api/v1/reportes/:codigo/pdf` — genera (o regenera) el PDF del
+/// reporte con sus datos y evaluación, y devuelve la ruta relativa del
+/// archivo (servido en `/archivos/...`).
+async fn generar_pdf(
+    State(estado): State<EstadoApp>,
+    Path(codigo): Path<Uuid>,
+) -> Result<impl axum::response::IntoResponse, ErrorApi> {
+    let ruta = pdf::generar_pdf_reporte(&estado.pool, &estado.configuracion.carpeta_archivos, codigo).await?;
+
+    Ok(RespuestaExitosa::creado(serde_json::json!({ "ruta_archivo": ruta })))
 }
 
 /// Traduce el DTO de entrada al struct interno usado por la capa de

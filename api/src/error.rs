@@ -34,6 +34,9 @@ pub enum ErrorApi {
     ErrorBaseDatos(sqlx::Error),
     /// Error interno no clasificado (hash de contraseñas, JWT, etc.).
     ErrorInterno(String),
+    /// La solicitud está mal formada (por ejemplo, un multipart sin archivos
+    /// válidos), distinto de una falla de validación de un campo puntual.
+    SolicitudInvalida(String),
 }
 
 /// Estructura interna del cuerpo de error, serializada como
@@ -100,6 +103,11 @@ impl ErrorApi {
                     "ocurrió un error interno en el servidor".to_string(),
                 )
             }
+            ErrorApi::SolicitudInvalida(mensaje) => (
+                StatusCode::BAD_REQUEST,
+                "SOLICITUD_INVALIDA".to_string(),
+                mensaje.clone(),
+            ),
         }
     }
 }

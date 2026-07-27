@@ -15,6 +15,7 @@ mod usuarios;
 
 use axum::{Extension, Router, http::Method, routing::get};
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use config::Configuracion;
@@ -44,6 +45,10 @@ async fn main() {
 
     let puerto = configuracion.puerto;
     let cors = construir_cors(&configuracion.cors_origenes);
+    let carpeta_archivos = configuracion.carpeta_archivos.clone();
+
+    // Asegurar que la carpeta de archivos exista al arrancar.
+    std::fs::create_dir_all(&carpeta_archivos).expect("no se pudo crear la carpeta de archivos");
 
     let estado = EstadoApp {
         pool,
@@ -59,6 +64,9 @@ async fn main() {
         .nest("/api/v1/reportes", reportes::rutas::rutas())
         .nest("/api/v1/reportes", evaluaciones::rutas::rutas())
         .nest("/api/v1/dashboard", dashboard::rutas::rutas())
+        // Servir archivos estáticos (fotos y PDFs guardados en disco).
+        // Accesibles en `/archivos/fotos/...` y `/archivos/pdfs/...`.
+        .nest_service("/archivos", ServeDir::new(&carpeta_archivos))
         .with_state(estado.clone())
         // El estado se expone también como `Extension` para que el
         // middleware de autenticación (que se aplica selectivamente con
