@@ -13,9 +13,9 @@ La minería ilegal de oro en ríos de Bolivia libera toneladas de mercurio al me
 ## Solución
 
 Colmena democratiza el monitoreo ambiental mediante:
-- **App móvil (Abeja)**: Captura de evidencia fotográfica con GPS automático, formulario simplificado de 5 pasos, y envío anónimo.
+- **App móvil**: Captura de evidencia fotográfica con GPS automático, formulario simplificado de 5 pasos, y envío anónimo.
 - **Análisis con IA**: Estimación automática de mercurio liberado, identificación de zonas protegidas afectadas, y normativa aplicable.
-- **Panel web (Colmena)**: Dashboard para organizaciones con mapa interactivo, métricas de impacto, historial de denuncias, y generación de reportes PDF oficiales.
+- **Panel web**: Dashboard para organizaciones con mapa interactivo, métricas de impacto, historial de denuncias, y generación de reportes PDF oficiales.
 - **Chatbot IA**: Asistente integrado con Llama 3.3 (vía Groq) que responde preguntas sobre los datos del sistema.
 
 ---
@@ -29,7 +29,7 @@ Colmena democratiza el monitoreo ambiental mediante:
 
   ┌──────────────────────┐                              ┌──────────────────────┐
   │    📱 APP MÓVIL      │                              │    🖥️ PANEL WEB      │
-  │    (Abeja)           │                              │    (Colmena)         │
+  │                      │                              │    (Colmena)         │
   ├──────────────────────┤                              ├──────────────────────┤
   │ • Flutter (Android)  │                              │ • Flutter Web        │
   │ • Cámara + GPS       │                              │ • Dashboard          │
@@ -225,30 +225,45 @@ GROQ_API_KEY=gsk_...
 
 ```
 colmena/
-├── api/              → Backend Rust (Axum + PostgreSQL + PostGIS)
+├── api/                → Backend Rust (Axum + PostgreSQL + PostGIS)
 │   ├── src/
-│   │   ├── agent/        → Reglas de evaluación IA
-│   │   ├── dashboard/    → Métricas, mapa, chat
-│   │   ├── evaluaciones/ → Modelo de evaluación
-│   │   ├── reportes/     → CRUD, fotos, PDF
-│   │   └── usuarios/     → Auth JWT
-│   ├── migrations/       → Schema SQL
-│   └── scripts/          → Datos seed
-├── web/              → Panel web Flutter
-│   ├── lib/src/
-│   │   ├── data/         → API service
-│   │   ├── models/       → Modelos de datos
-│   │   ├── screens/      → Pantallas (dashboard, historial, alertas)
-│   │   └── widgets/      → Componentes (mapa, chat, panel detalle)
-│   └── assets/           → Imágenes
-├── mobile/           → App móvil Flutter
-│   ├── lib/src/
-│   │   ├── data/         → API service, datos mock
-│   │   ├── models/       → Modelo Registro
-│   │   ├── screens/      → Pantallas (inicio, registros, ajustes, cámara, estimación)
-│   │   └── widgets/      → Componentes reutilizables
-│   └── android/          → Configuración nativa Android
-└── docker-compose.yml
+│   │   ├── agent/          → Reglas de evaluación IA del agente
+│   │   ├── dashboard/      → Métricas, mapa GeoJSON, chatbot IA
+│   │   ├── evaluaciones/   → Modelo y consultas de evaluación
+│   │   ├── reportes/       → CRUD, fotos, PDF, sincronización
+│   │   └── usuarios/       → Autenticación JWT (login, registro)
+│   ├── migrations/         → Schema SQL (PostGIS)
+│   ├── scripts/            → Datos seed de prueba
+│   ├── uploads/            → Fotos y PDFs generados (local)
+│   ├── Cargo.toml          → Dependencias Rust
+│   ├── Dockerfile          → Imagen para deploy en Render
+│   └── .env.example        → Variables de entorno requeridas
+│
+├── web/                → Panel web Flutter (Dashboard de monitoreo)
+│   ├── lib/
+│   │   ├── app.dart        → Shell principal, auth, navegación
+│   │   └── src/
+│   │       ├── data/       → Servicio API con JWT
+│   │       ├── models/     → Modelos (reporte, métricas)
+│   │       ├── screens/    → Dashboard, historial, alertas, login
+│   │       └── widgets/    → Mapa, chat IA, panel detalle, branding
+│   ├── assets/images/      → Imagen de fondo login
+│   └── pubspec.yaml        → Dependencias Flutter
+│
+├── mobile/             → App móvil Flutter (Android)
+│   ├── lib/
+│   │   ├── app.dart        → Shell con navegación inferior y tema
+│   │   └── src/
+│   │       ├── data/       → Servicio API, datos mock offline
+│   │       ├── models/     → Modelo Registro
+│   │       ├── screens/    → Inicio, registros, ajustes, cámara, estimación
+│   │       └── widgets/    → Indicadores de conexión y sync
+│   ├── android/            → Configuración nativa (permisos, ícono)
+│   └── pubspec.yaml        → Dependencias Flutter
+│
+├── mcp/                → Servidor MCP (reservado para extensiones futuras)
+├── .gitignore
+└── README.md           → Este archivo
 ```
 
 ---

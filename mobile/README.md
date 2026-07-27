@@ -1,4 +1,4 @@
-# Colmena Mobile (Abeja)
+# Colmena Mobile
 
 App móvil Android para captura de evidencia de minería ilegal en ríos. Diseñada para comunidades que necesitan reportar de forma segura, anónima y sin depender de conectividad constante.
 
