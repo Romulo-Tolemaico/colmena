@@ -1,157 +1,209 @@
 # Colmena
 
-Sistema comunitario de monitoreo ambiental contra la minería ilegal en ríos.
+**Sistema comunitario de monitoreo ambiental contra la minería ilegal en ríos de Bolivia.**
+
+Colmena es una plataforma integral que permite a comunidades reportar actividades de minería ilegal de forma segura y anónima, generar evidencia georreferenciada, y producir documentación formal para organismos de control.
 
 ---
 
-## Requisitos previos
+## Problema que resuelve
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.3+)
-- [Rust](https://rustup.rs/) (edición 2024)
-- [Docker](https://www.docker.com/products/docker-desktop/) (para PostgreSQL + PostGIS)
+La minería ilegal de oro en ríos de Bolivia libera toneladas de mercurio al medio ambiente, contaminando fuentes de agua, afectando ecosistemas acuáticos y poniendo en riesgo la salud de comunidades ribereñas. Las denuncias formales requieren evidencia técnica que las comunidades no pueden generar fácilmente, y quienes reportan temen represalias.
+
+## Solución
+
+Colmena democratiza el monitoreo ambiental mediante:
+- **App móvil (Abeja)**: Captura de evidencia fotográfica con GPS automático, formulario simplificado de 5 pasos, y envío anónimo.
+- **Análisis con IA**: Estimación automática de mercurio liberado, identificación de zonas protegidas afectadas, y normativa aplicable.
+- **Panel web (Colmena)**: Dashboard para organizaciones con mapa interactivo, métricas de impacto, historial de denuncias, y generación de reportes PDF oficiales.
+- **Chatbot IA**: Asistente integrado con Llama 3.3 (vía Groq) que responde preguntas sobre los datos del sistema.
+
+---
+
+## Arquitectura
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   App Móvil     │     │    API Backend   │     │   Panel Web     │
+│   (Flutter)     │────>│  (Rust/Axum)     │<────│   (Flutter)     │
+│   Android       │     │  PostgreSQL +    │     │   Chrome/Edge   │
+│                 │     │  PostGIS         │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                              │
+                              ▼
+                        ┌─────────────┐
+                        │  Groq API   │
+                        │ (Llama 3.3) │
+                        └─────────────┘
+```
+
+## Stack tecnológico
+
+| Componente | Tecnología | Justificación |
+|-----------|-----------|---------------|
+| Backend | Rust + Axum | Rendimiento, seguridad de memoria, bajo consumo |
+| Base de datos | PostgreSQL + PostGIS | Consultas geoespaciales nativas |
+| App móvil | Flutter (Android) | UI nativa, cámara, GPS, offline-first |
+| Panel web | Flutter Web | Código compartido con móvil, UI consistente |
+| IA/Chat | Groq + Llama 3.3 70B | Gratuito, ultra-rápido, español |
+| Deploy API | Render | Free tier, auto-deploy desde GitHub |
+| Mapas | OpenStreetMap + flutter_map | Sin costo, sin API key |
+
+---
+
+## Funcionalidades
+
+### App Móvil (Abeja)
+- Onboarding educativo (primera vez)
+- Pantalla de inicio tipo dashboard con información del proyecto
+- Captura de fotos (cámara + galería) con GPS automático
+- Formulario de estimación de 5 pasos (draga, tiempo, indicadores, notas, contacto opcional)
+- Envío de reportes al servidor con subida de fotos
+- Listado de registros con tabs (Todos / Mis registros)
+- Detalle de reporte con mapa, fotos, evaluación IA
+- Descarga de PDF oficial
+- Modo oscuro
+- Selector de idioma (Español, English, Quechua)
+- Ajustes con guía de seguridad y enlaces institucionales
+- Navegación inferior (Inicio, Registros, Ajustes)
+- Indicador de conexión online/offline con timeout
+- Enlaces a AJAM, SERNAP, Defensoría del Pueblo, Ley 1333
+
+### Panel Web (Colmena)
+- Login y registro con JWT (sesión persistente)
+- Dashboard con métricas en tiempo real (reportes, mercurio, zonas, anónimos)
+- Mapa interactivo con todos los reportes geolocalizados
+- Gráfico de eventos por mes
+- Filtros por estado y fecha
+- Historial de denuncias con tarjetas modernas (hover, chips con color, nivel de riesgo)
+- Detalle de reporte con evaluación completa, fotos, mapa
+- Cambio de estado (Nuevo → Revisado → Escalado)
+- Descarga de PDF por reporte
+- Chatbot IA (Llama 3.3) con datos reales del sistema
+- Pantalla de alertas activas
+- Tema claro/oscuro
+- Login con diseño profesional (imagen de fondo, branding animado)
+
+### API Backend
+- Autenticación JWT (login, registro, refresh token)
+- CRUD de reportes con PostGIS (ubicación geográfica)
+- Subida y servicio de fotos (multipart/form-data)
+- Generación de PDF por reporte
+- Evaluación automática por agente IA (mercurio, riesgo, zona, normativa)
+- Dashboard: métricas agregadas, mapa GeoJSON
+- Chatbot IA: endpoint que conecta con Groq/Llama 3.3
+- Sincronización offline (batch de reportes)
+- Cambio de estado con validación de roles
+- CORS configurado para web y móvil
+
+---
+
+## Cómo correr el proyecto
+
+### Requisitos previos
+- Flutter SDK 3.3+
+- Rust (edición 2024)
+- Docker (para PostgreSQL + PostGIS)
 - Chrome (para web)
-- Dispositivo Android con cable USB (para mobile)
+- Dispositivo Android con USB (para móvil)
 
-Verifica tu instalación:
+### 1. Base de datos
+
 ```bash
-flutter doctor
-cargo --version
-docker --version
+docker run -d --name colmena-db -p 5434:5432 \
+  -e POSTGRES_USER=colmena -e POSTGRES_PASSWORD=colmena123 \
+  -e POSTGRES_DB=colmena postgis/postgis:17-3.4
 ```
 
----
+### 2. API
 
-## Paso a paso para correr todo
-
-### 1. Base de datos (Docker)
-
-```powershell
-docker run -d --name colmena-db -p 5434:5432 -e POSTGRES_USER=colmena -e POSTGRES_PASSWORD=colmena123 -e POSTGRES_DB=colmena --health-cmd="pg_isready -U colmena" --health-interval=10s postgis/postgis:17-3.4
-```
-
-Si el contenedor ya existe, solo iniciarlo:
-```powershell
-docker start colmena-db
-```
-
-### 2. API (Rust)
-
-```powershell
+```bash
 cd api
 cp .env.example .env
-```
-
-Editar `.env` con estos valores:
-```
-DATABASE_URL=postgres://colmena:colmena123@localhost:5434/colmena
-JWT_SECRET=colmena_dev_super_secret_2026_change_me
-PORT=3000
-CORS_ORIGENES=*
-```
-
-Levantar el servidor:
-```powershell
+# Editar .env con DATABASE_URL, JWT_SECRET, PORT=3000, CORS_ORIGENES=*
 cargo run
 ```
 
-Esperar hasta ver: `listening on 0.0.0.0:3000`
+### 3. Datos seed (primera vez)
 
-Verificar: http://localhost:3000/health debe responder `ok`
-
-### 3. Cargar datos de prueba (solo la primera vez)
-
-```powershell
-cd api
-Get-Content scripts/seed_data.sql | docker exec -i colmena-db psql -U colmena -d colmena
+```bash
+cat api/scripts/seed_data.sql | docker exec -i colmena-db psql -U colmena -d colmena
 ```
 
-### 4. Panel Web (Colmena)
+### 4. Web
 
-```powershell
+```bash
 cd web
 flutter pub get
-flutter run -d chrome --web-port=8080
+flutter run -d chrome
 ```
 
-Abrir http://localhost:8080
+### 5. Móvil
 
-**Credenciales:** crear un usuario en "Crear cuenta" y luego iniciar sesión.
-
-### 5. App Mobile (Abeja)
-
-```powershell
+```bash
 cd mobile
 flutter pub get
 flutter run
 ```
 
-**En celular físico con USB:**
-1. Activar "Opciones de desarrollador" (tocar 7 veces "Número de compilación")
-2. Activar "Depuración USB"
-3. Conectar cable USB y aceptar el prompt
-4. Ejecutar `flutter run`
+---
 
-**Si hay error de plugins (cámara/GPS):**
-```powershell
-flutter clean
-flutter pub get
-flutter run
+## Deploy en producción
+
+| Servicio | URL |
+|---------|-----|
+| API Backend | https://colmena-1mlk.onrender.com |
+| Endpoint reportes | https://colmena-1mlk.onrender.com/api/v1/reportes |
+
+### Variables de entorno en Render
+```
+DATABASE_URL=postgres://...
+JWT_SECRET=...
+PORT=3000
+CORS_ORIGENES=*
+GROQ_API_KEY=gsk_...
 ```
 
 ---
 
-## Puertos
-
-| Servicio | Puerto |
-|---|---|
-| PostgreSQL (Docker) | localhost:5434 |
-| API Rust | localhost:3000 |
-| Web Flutter | localhost:8080 |
-| Mobile | Celular vía USB |
-
----
-
-## Estructura del proyecto
+## Estructura del repositorio
 
 ```
 colmena/
-├── api/        → Backend en Rust (Axum + PostgreSQL + PostGIS)
-├── web/        → Panel web en Flutter (Dashboard, mapa, reportes)
-├── mobile/     → App mobile en Flutter (Captura de evidencia)
-└── mcp/        → Servidor MCP (pendiente)
+├── api/              → Backend Rust (Axum + PostgreSQL + PostGIS)
+│   ├── src/
+│   │   ├── agent/        → Reglas de evaluación IA
+│   │   ├── dashboard/    → Métricas, mapa, chat
+│   │   ├── evaluaciones/ → Modelo de evaluación
+│   │   ├── reportes/     → CRUD, fotos, PDF
+│   │   └── usuarios/     → Auth JWT
+│   ├── migrations/       → Schema SQL
+│   └── scripts/          → Datos seed
+├── web/              → Panel web Flutter
+│   ├── lib/src/
+│   │   ├── data/         → API service
+│   │   ├── models/       → Modelos de datos
+│   │   ├── screens/      → Pantallas (dashboard, historial, alertas)
+│   │   └── widgets/      → Componentes (mapa, chat, panel detalle)
+│   └── assets/           → Imágenes
+├── mobile/           → App móvil Flutter
+│   ├── lib/src/
+│   │   ├── data/         → API service, datos mock
+│   │   ├── models/       → Modelo Registro
+│   │   ├── screens/      → Pantallas (inicio, registros, ajustes, cámara, estimación)
+│   │   └── widgets/      → Componentes reutilizables
+│   └── android/          → Configuración nativa Android
+└── docker-compose.yml
 ```
 
 ---
 
-## Funcionalidades implementadas
+## Equipo
 
-### Panel Web
-- Login y registro con JWT
-- Sesión persistente (no se pierde al recargar)
-- Dashboard con mapa interactivo (OpenStreetMap)
-- Métricas: reportes, mercurio, zonas, comunidades
-- Gráfico de eventos por mes
-- Filtros por estado y fecha (conectados al API)
-- Historial de denuncias
-- Alertas activas
-- Detalle de reporte con cambio de estado
-- Chat flotante inteligente (responde con datos reales)
-- Tema claro/oscuro
+Desarrollado para el Hackathon Colmena 2026.
 
-### App Mobile
-- Onboarding de bienvenida (solo primera vez)
-- Captura de fotos (cámara real + galería)
-- GPS real del dispositivo
-- Formulario de estimación (4 preguntas con pictogramas)
-- Envío de reportes al API
-- Lista de registros desde el API
-- Indicador online/offline
-- Pantalla de resultado con impacto estimado
+---
 
-### API
-- Autenticación JWT (login, registro, refresh)
-- CRUD de reportes con PostGIS
-- Sincronización offline (batch)
-- Dashboard métricas y mapa GeoJSON
-- Cambio de estado con auditoría
-- Evaluaciones del agente
+## Licencia
+
+Proyecto académico / hackathon. Todos los derechos reservados.
