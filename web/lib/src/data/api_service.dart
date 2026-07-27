@@ -9,7 +9,7 @@ class ApiService {
       : _baseUrl = baseUrl ??
             const String.fromEnvironment(
               'API_BASE_URL',
-              defaultValue: 'http://localhost:3000/api/v1',
+              defaultValue: 'https://colmena-1mlk.onrender.com/api/v1',
             );
 
   final String _baseUrl;
@@ -21,6 +21,9 @@ class ApiService {
   /// URL base del servidor (sin /api/v1) para construir URLs de archivos.
   String get serverBase {
     final uri = Uri.parse(_baseUrl);
+    if (uri.port == 443 || uri.port == 80 || uri.scheme == 'https') {
+      return '${uri.scheme}://${uri.host}';
+    }
     return '${uri.scheme}://${uri.host}:${uri.port}';
   }
 

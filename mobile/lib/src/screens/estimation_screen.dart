@@ -24,16 +24,20 @@ class _EstimationScreenState extends State<EstimationScreen> {
   bool _personasVisibles = false;
   bool _motobombasVisibles = false;
   final TextEditingController _notasController = TextEditingController();
+  final TextEditingController _aliasController = TextEditingController();
+  final TextEditingController _celularController = TextEditingController();
 
   @override
   void dispose() {
     _pageController.dispose();
     _notasController.dispose();
+    _aliasController.dispose();
+    _celularController.dispose();
     super.dispose();
   }
 
   void _next() {
-    if (_currentPage < 3) {
+    if (_currentPage < 4) {
       _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     } else {
       _submit();
@@ -56,6 +60,8 @@ class _EstimationScreenState extends State<EstimationScreen> {
       'personasVisibles': _personasVisibles,
       'motobombasVisibles': _motobombasVisibles,
       'notas': _notasController.text.trim(),
+      'alias': _aliasController.text.trim(),
+      'celular': _celularController.text.trim(),
     };
     Navigator.of(context).pop(result);
   }
@@ -81,7 +87,7 @@ class _EstimationScreenState extends State<EstimationScreen> {
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
-                '${_currentPage + 1} / 4',
+                '${_currentPage + 1} / 5',
                 style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ),
@@ -92,7 +98,7 @@ class _EstimationScreenState extends State<EstimationScreen> {
         children: [
           // Indicador de progreso
           LinearProgressIndicator(
-            value: (_currentPage + 1) / 4,
+            value: (_currentPage + 1) / 5,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
             minHeight: 4,
           ),
@@ -119,6 +125,7 @@ class _EstimationScreenState extends State<EstimationScreen> {
                   onMotobombasChanged: (v) => setState(() => _motobombasVisibles = v),
                 ),
                 _PageNotas(controller: _notasController),
+                _PageContacto(aliasController: _aliasController, celularController: _celularController),
               ],
             ),
           ),
@@ -128,7 +135,7 @@ class _EstimationScreenState extends State<EstimationScreen> {
             padding: const EdgeInsets.all(20),
             child: FilledButton(
               onPressed: _canContinue ? _next : null,
-              child: Text(_currentPage == 3 ? 'Generar reporte' : 'Continuar'),
+              child: Text(_currentPage == 4 ? 'Generar reporte' : 'Continuar'),
             ),
           ),
         ],
@@ -503,6 +510,76 @@ class _CheckboxCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Página 5: Contacto opcional
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PageContacto extends StatelessWidget {
+  const _PageContacto({required this.aliasController, required this.celularController});
+
+  final TextEditingController aliasController;
+  final TextEditingController celularController;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('¿Quieres dejar un contacto?', style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            'Opcional: por si la organización necesita más información. Si lo dejas vacío, el reporte será anónimo.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: aliasController,
+            decoration: const InputDecoration(
+              labelText: 'Alias o nombre',
+              hintText: 'Ej: Río Claro',
+              prefixIcon: Icon(Icons.person_outlined),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: celularController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Celular',
+              hintText: 'Ej: 725-11445',
+              prefixIcon: Icon(Icons.phone_outlined),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.shield_outlined, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Tu identidad nunca se expone públicamente. Estos datos solo son visibles para la organización receptora.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

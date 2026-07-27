@@ -223,7 +223,22 @@ class _ColmenaAppState extends State<ColmenaApp> {
 
   void _toggleSidebar() => setState(() => _sidebarCollapsed = !_sidebarCollapsed);
 
-  void _openReporte(String id) => setState(() => _selectedReporteId = id);
+  void _openReporte(String id) async {
+    setState(() => _selectedReporteId = id);
+    
+    // Cargar detalle completo (incluye evaluación) desde el API
+    final result = await _api.getReporte(id);
+    if (result.isSuccess && mounted) {
+      final json = result.data!;
+      final updated = _mapReporte(json);
+      setState(() {
+        final idx = _reportes.indexWhere((r) => r.id == id);
+        if (idx >= 0) {
+          _reportes[idx] = updated;
+        }
+      });
+    }
+  }
 
   void _clearReporteSelection() => setState(() => _selectedReporteId = null);
 

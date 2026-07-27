@@ -566,9 +566,12 @@ class _MapPickerScreenState extends State<_MapPickerScreen> {
       appBar: AppBar(
         title: const Text('Seleccionar ubicación'),
         actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(_selectedPosition),
-            child: const Text('Confirmar'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).pop(_selectedPosition),
+              child: const Text('Confirmar'),
+            ),
           ),
           const SizedBox(width: 12),
         ],

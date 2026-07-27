@@ -22,6 +22,8 @@ pub struct Configuracion {
     /// efímero y se pierde en cada redeploy/restart. Ver README para más
     /// detalles y alternativas (S3, R2, etc.) si se necesita persistencia.
     pub carpeta_archivos: String,
+    /// API key de Groq para el chatbot con IA (opcional).
+    pub groq_api_key: Option<String>,
 }
 
 impl Configuracion {
@@ -51,12 +53,16 @@ impl Configuracion {
         // Opcional: por defecto "./uploads" si no se especifica.
         let carpeta_archivos = env::var("CARPETA_ARCHIVOS").unwrap_or_else(|_| "./uploads".to_string());
 
+        // Opcional: API key de Groq para el chatbot IA.
+        let groq_api_key = env::var("GROQ_API_KEY").ok();
+
         Configuracion {
             database_url,
             jwt_secret,
             puerto,
             cors_origenes,
             carpeta_archivos,
+            groq_api_key,
         }
     }
 }

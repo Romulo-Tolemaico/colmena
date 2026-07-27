@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' as http_parser;
 
 import '../models/registro.dart';
 
@@ -24,6 +25,9 @@ class MobileApiService {
   /// URL base del servidor (sin /api/v1) para construir URLs de archivos.
   String get _serverBase {
     final uri = Uri.parse(_baseUrl);
+    if (uri.port == 443 || uri.port == 80 || uri.scheme == 'https') {
+      return '${uri.scheme}://${uri.host}';
+    }
     return '${uri.scheme}://${uri.host}:${uri.port}';
   }
 
@@ -96,7 +100,7 @@ class MobileApiService {
       final response = await http.get(
         Uri.parse('$_baseUrl/reportes?pagina=$pagina&por_pagina=$porPagina'),
         headers: _headers,
-      );
+      ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -143,11 +147,34 @@ class MobileApiService {
       for (final path in paths) {
         final file = File(path);
         if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath('foto', path));
+          final bytes = await file.readAsBytes();
+          if (bytes.isNotEmpty) {
+            // Determinar el content type basado en la extensión
+            final ext = path.split('.').last.toLowerCase();
+            final contentType = switch (ext) {
+              'jpg' || 'jpeg' => 'image/jpeg',
+              'png' => 'image/png',
+              'webp' => 'image/webp',
+              'heic' => 'image/heic',
+              _ => 'image/jpeg',
+            };
+
+            final filename = 'foto_${request.files.length + 1}.$ext';
+            request.files.add(http.MultipartFile.fromBytes(
+              'foto',
+              bytes,
+              filename: filename,
+              contentType: _parseMediaType(contentType),
+            ));
+          }
         }
       }
 
-      final streamedResponse = await request.send();
+      if (request.files.isEmpty) {
+        return ApiResult.error('No se encontraron fotos válidas para subir');
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -160,6 +187,11 @@ class MobileApiService {
     } catch (e) {
       return ApiResult.error('Error al subir fotos: $e');
     }
+  }
+
+  static http_parser.MediaType _parseMediaType(String type) {
+    final parts = type.split('/');
+    return http_parser.MediaType(parts[0], parts.length > 1 ? parts[1] : 'octet-stream');
   }
 
   /// Lista las rutas de fotos de un reporte.

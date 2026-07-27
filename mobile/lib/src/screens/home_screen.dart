@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ReportResultScreen(registro: registroResultado)),
+        MaterialPageRoute(builder: (_) => ReportResultScreen(registro: registroResultado, api: _api)),
       );
 
       // Recargar lista
@@ -325,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   registro: registro,
                                   onTap: () {
                                     Navigator.of(context).push(
-                                      MaterialPageRoute(builder: (_) => RecordDetailScreen(registro: registro)),
+                                      MaterialPageRoute(builder: (_) => RecordDetailScreen(registro: registro, api: _api)),
                                     );
                                   },
                                 );
