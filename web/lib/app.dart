@@ -166,7 +166,8 @@ class _ColmenaAppState extends State<ColmenaApp> {
           ? [json['evaluacion']['normativa_codigo'] as String]
           : const [],
       danoEconomicoEstimado: 0,
-      nivelRiesgo: _parseNivelRiesgo(json['evaluacion']?['nivel_riesgo_codigo'] as String?),
+      nivelRiesgo: _parseNivelRiesgo(json['evaluacion']?['nivel_riesgo_codigo'] as String?)
+          ?? _riesgoDesdeEstado(json['estado_codigo'] as String?),
       estado: _parseEstado(json['estado_codigo'] as String?),
       tipoContacto: (json['alias_informante'] != null || json['celular_informante'] != null)
           ? TipoContacto.conContacto
@@ -194,10 +195,16 @@ class _ColmenaAppState extends State<ColmenaApp> {
         _ => TiempoOperando.variosDias,
       };
 
-  NivelRiesgo _parseNivelRiesgo(String? codigo) => switch (codigo) {
+  NivelRiesgo? _parseNivelRiesgo(String? codigo) => switch (codigo) {
         'BAJO' => NivelRiesgo.bajo,
         'MEDIO' => NivelRiesgo.medio,
         'ALTO' => NivelRiesgo.alto,
+        _ => null,
+      };
+
+  NivelRiesgo _riesgoDesdeEstado(String? estado) => switch (estado) {
+        'escalado' => NivelRiesgo.alto,
+        'revisado' => NivelRiesgo.medio,
         _ => NivelRiesgo.bajo,
       };
 
