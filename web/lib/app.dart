@@ -377,6 +377,10 @@ class _ColmenaAppState extends State<ColmenaApp> {
                     final result = await _api.generarPdf(codigo);
                     return result.isSuccess ? result.data : null;
                   },
+                  onCargarFotos: (codigo) async {
+                    final result = await _api.listarFotos(codigo);
+                    return result.isSuccess ? result.data! : [];
+                  },
                 ),
           child: switch (_view) {
             AppView.dashboard => DashboardScreen(

@@ -12,14 +12,14 @@ class ReportDetailPanel extends StatefulWidget {
     required this.onClose,
     this.onCambiarEstado,
     this.onGenerarPdf,
-    this.fotosUrls,
+    this.onCargarFotos,
   });
 
   final Reporte reporte;
   final VoidCallback onClose;
   final Future<void> Function(String codigo, String nuevoEstado)? onCambiarEstado;
   final Future<String?> Function(String codigo)? onGenerarPdf;
-  final List<String>? fotosUrls;
+  final Future<List<String>> Function(String codigo)? onCargarFotos;
 
   @override
   State<ReportDetailPanel> createState() => _ReportDetailPanelState();
@@ -27,11 +27,13 @@ class ReportDetailPanel extends StatefulWidget {
 
 class _ReportDetailPanelState extends State<ReportDetailPanel> {
   late EstadoReporte _estado;
+  List<String> _fotos = [];
 
   @override
   void initState() {
     super.initState();
     _estado = widget.reporte.estado;
+    _cargarFotos();
   }
 
   @override
@@ -39,6 +41,14 @@ class _ReportDetailPanelState extends State<ReportDetailPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.reporte.id != widget.reporte.id) {
       _estado = widget.reporte.estado;
+      _cargarFotos();
+    }
+  }
+
+  Future<void> _cargarFotos() async {
+    if (widget.onCargarFotos != null) {
+      final fotos = await widget.onCargarFotos!(widget.reporte.id);
+      if (mounted) setState(() => _fotos = fotos);
     }
   }
 
@@ -204,12 +214,42 @@ class _ReportDetailPanelState extends State<ReportDetailPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (reporte.fotos.isNotEmpty)
+                      if (_fotos.isNotEmpty)
+                        SizedBox(
+                          height: 160,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _fotos.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (context, index) => ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(_fotos[index], height: 160, width: 220, fit: BoxFit.cover),
+                            ),
+                          ),
+                        )
+                      else if (reporte.fotos.isNotEmpty)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: AspectRatio(
                             aspectRatio: 16 / 9,
                             child: Image.network(reporte.fotos.first, fit: BoxFit.cover),
+                          ),
+                        )
+                      else
+                        Container(
+                          height: 100,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.image_not_supported_outlined, size: 32, color: theme.colorScheme.onSurfaceVariant),
+                              const SizedBox(height: 4),
+                              Text('Sin fotos', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                            ],
                           ),
                         ),
                       const SizedBox(height: 8),
