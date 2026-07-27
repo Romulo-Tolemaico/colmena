@@ -354,7 +354,10 @@ class _ColmenaAppState extends State<ColmenaApp> {
       case AuthState.authenticated:
         return AppShell(
           view: _view,
-          onChangeView: (view) => setState(() => _view = view),
+          onChangeView: (view) => setState(() {
+            _view = view;
+            _selectedReporteId = null;
+          }),
           sidebarCollapsed: _sidebarCollapsed,
           onToggleSidebar: _toggleSidebar,
           language: _language,
