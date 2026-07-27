@@ -18,10 +18,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // URL del API configurable en tiempo de compilación con --dart-define,
+  // para no tener que editar código cada vez que cambia la red local.
+  // Por defecto apunta al emulador Android (10.0.2.2 = localhost del host).
+  //
+  // Celular físico por WiFi (celular y PC en la misma red):
+  //   flutter run --dart-define=API_BASE_URL=http://<IP_DE_TU_PC>:3000/api/v1
   final MobileApiService _api = MobileApiService(
-    // IP local de tu PC en WiFi — celular y PC deben estar en la misma red.
-    // Si usas emulador Android, cambia a: http://10.0.2.2:3000/api/v1
-    baseUrl: 'http://192.168.100.160:3000/api/v1',
+    baseUrl: const String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: 'http://10.0.2.2:3000/api/v1',
+    ),
   );
 
   List<Registro> _registros = [];

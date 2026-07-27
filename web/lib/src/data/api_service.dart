@@ -4,8 +4,17 @@ import 'package:http/http.dart' as http;
 
 /// Servicio central para comunicarse con la API de Colmena.
 /// Maneja la URL base, el token JWT, y las llamadas HTTP.
+///
+/// La URL base es configurable en tiempo de compilación con --dart-define,
+/// sin tener que editar código:
+///   flutter run --dart-define=API_BASE_URL=http://192.168.1.42:3000/api/v1
 class ApiService {
-  ApiService({String? baseUrl}) : _baseUrl = baseUrl ?? 'http://localhost:3000/api/v1';
+  ApiService({String? baseUrl})
+      : _baseUrl = baseUrl ??
+            const String.fromEnvironment(
+              'API_BASE_URL',
+              defaultValue: 'http://localhost:3000/api/v1',
+            );
 
   final String _baseUrl;
   String? _token;

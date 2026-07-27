@@ -6,9 +6,17 @@ import '../models/registro.dart';
 
 /// Servicio API para la app mobile (Abeja).
 /// Se conecta al backend de Colmena para enviar reportes y sincronizar.
+///
+/// La URL base es configurable en tiempo de compilación con --dart-define,
+/// sin tener que editar código:
+///   flutter run --dart-define=API_BASE_URL=http://192.168.1.42:3000/api/v1
 class MobileApiService {
   MobileApiService({String? baseUrl})
-      : _baseUrl = baseUrl ?? 'http://10.0.2.2:3000/api/v1'; // 10.0.2.2 es localhost desde emulador Android
+      : _baseUrl = baseUrl ??
+            const String.fromEnvironment(
+              'API_BASE_URL',
+              defaultValue: 'http://10.0.2.2:3000/api/v1', // 10.0.2.2 es localhost desde emulador Android
+            );
 
   final String _baseUrl;
 
