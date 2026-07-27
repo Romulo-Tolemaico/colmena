@@ -42,6 +42,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
 
   String _userName = '';
   String _userRol = '';
+  String _userEmail = '';
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
       setState(() {
         _userName = session.nombre;
         _userRol = session.rol;
+        _userEmail = session.correo;
         _authState = AuthState.authenticated;
       });
       // Obtener datos reales del usuario si hay conexión
@@ -128,8 +130,8 @@ class _ColmenaAppState extends State<ColmenaApp> {
       setState(() {
         _userName = user.nombre;
         _userRol = user.rolCodigo;
+        _userEmail = user.correo;
       });
-      // Actualizar sesión persistida con nombre real
       await _session.save(UserSession(
         token: _api.token!,
         nombre: user.nombre,
@@ -253,6 +255,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
       setState(() {
         _userName = nombre;
         _userRol = rol;
+        _userEmail = correo;
         _authState = AuthState.authenticated;
         _authError = null;
       });
@@ -292,6 +295,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
       _authError = null;
       _userName = '';
       _userRol = '';
+      _userEmail = '';
     });
   }
 
@@ -367,6 +371,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
           onLogout: _handleLogout,
           userName: _userName,
           userRol: _userRol,
+          userEmail: _userEmail,
           reportes: _reportes,
           onChatMessage: (mensaje) async {
             final result = await _api.chatDashboard(mensaje);

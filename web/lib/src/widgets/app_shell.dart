@@ -20,6 +20,7 @@ class AppShell extends StatelessWidget {
     required this.child,
     this.userName = '',
     this.userRol = '',
+    this.userEmail = '',
     this.reportes = const [],
     this.onChatMessage,
   });
@@ -37,6 +38,7 @@ class AppShell extends StatelessWidget {
   final Widget child;
   final String userName;
   final String userRol;
+  final String userEmail;
   final List<Reporte> reportes;
   final Future<String?> Function(String mensaje)? onChatMessage;
 
@@ -59,6 +61,7 @@ class AppShell extends StatelessWidget {
                   onLogout: onLogout,
                   userName: userName,
                   userRol: userRol,
+                  userEmail: userEmail,
                 ),
                 // Contenido principal
                 Expanded(
@@ -149,6 +152,7 @@ class _Sidebar extends StatelessWidget {
     required this.onLogout,
     this.userName = '',
     this.userRol = '',
+    this.userEmail = '',
   });
 
   final AppView view;
@@ -158,6 +162,7 @@ class _Sidebar extends StatelessWidget {
   final VoidCallback onLogout;
   final String userName;
   final String userRol;
+  final String userEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -260,7 +265,7 @@ class _Sidebar extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(10),
-                      onTap: () => _showProfileDialog(context, userName, userRol, colorScheme, textTheme),
+                      onTap: () => _showProfileDialog(context, userName, userRol, userEmail, colorScheme, textTheme),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -294,7 +299,7 @@ class _Sidebar extends StatelessWidget {
                   )
                 else
                   IconButton(
-                    onPressed: () => _showProfileDialog(context, userName, userRol, colorScheme, textTheme),
+                    onPressed: () => _showProfileDialog(context, userName, userRol, userEmail, colorScheme, textTheme),
                     icon: CircleAvatar(
                       radius: 14,
                       backgroundColor: colorScheme.primaryContainer,
@@ -400,7 +405,7 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-void _showProfileDialog(BuildContext context, String userName, String userRol, ColorScheme colorScheme, TextTheme textTheme) {
+void _showProfileDialog(BuildContext context, String userName, String userRol, String userEmail, ColorScheme colorScheme, TextTheme textTheme) {
   showDialog(
     context: context,
     builder: (context) => Dialog(
@@ -440,21 +445,11 @@ void _showProfileDialog(BuildContext context, String userName, String userRol, C
               const SizedBox(height: 20),
               const Divider(),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.circle, size: 10, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Text('Estado: En línea', style: textTheme.bodyMedium),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.security, size: 16, color: colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Text('Sesión activa', style: textTheme.bodyMedium),
-                ],
-              ),
+              if (userEmail.isNotEmpty)
+                _ProfileRow(icon: Icons.email_outlined, label: 'Correo', value: userEmail),
+              _ProfileRow(icon: Icons.badge_outlined, label: 'Rol', value: userRol.isNotEmpty ? userRol : 'Sin asignar'),
+              _ProfileRow(icon: Icons.circle, label: 'Estado', value: 'En línea', iconColor: Colors.green, iconSize: 10),
+              _ProfileRow(icon: Icons.security, label: 'Sesión', value: 'Activa'),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -469,4 +464,31 @@ void _showProfileDialog(BuildContext context, String userName, String userRol, C
       ),
     ),
   );
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({required this.icon, required this.label, required this.value, this.iconColor, this.iconSize});
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? iconColor;
+  final double? iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: iconSize ?? 16, color: iconColor ?? theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Text('$label:', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width: 8),
+          Flexible(child: Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
+        ],
+      ),
+    );
+  }
 }
