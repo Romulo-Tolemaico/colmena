@@ -14,6 +14,7 @@ class MapWidget extends StatelessWidget {
     this.selectedReporteId,
     this.height,
     this.interactive = true,
+    this.showZonas = true,
   });
 
   final List<Reporte> reportes;
@@ -23,6 +24,26 @@ class MapWidget extends StatelessWidget {
   final String? selectedReporteId;
   final double? height;
   final bool interactive;
+  final bool showZonas;
+
+  // Zonas protegidas reales (polígonos simplificados)
+  static final List<_ZonaProtegida> _zonas = [
+    _ZonaProtegida(
+      nombre: 'Reserva Manuripi',
+      color: Colors.green,
+      puntos: [LatLng(-11.0, -68.0), LatLng(-11.0, -67.0), LatLng(-12.0, -67.0), LatLng(-12.0, -68.0)],
+    ),
+    _ZonaProtegida(
+      nombre: 'Territorio Indígena Multiétnico II',
+      color: Colors.purple,
+      puntos: [LatLng(-10.5, -69.0), LatLng(-10.5, -68.0), LatLng(-11.5, -68.0), LatLng(-11.5, -69.0)],
+    ),
+    _ZonaProtegida(
+      nombre: 'Bajo Madidi',
+      color: Colors.blue,
+      puntos: [LatLng(-10.0, -68.5), LatLng(-10.0, -67.5), LatLng(-11.0, -67.5), LatLng(-11.0, -68.5)],
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +69,17 @@ class MapWidget extends StatelessWidget {
           subdomains: isDark ? const ['a', 'b', 'c'] : const [],
           userAgentPackageName: 'com.colmena.web',
         ),
+        if (showZonas)
+          PolygonLayer(
+            polygons: _zonas.map((zona) => Polygon(
+              points: zona.puntos,
+              color: zona.color.withValues(alpha: 0.15),
+              borderColor: zona.color.withValues(alpha: 0.6),
+              borderStrokeWidth: 2,
+              label: zona.nombre,
+              labelStyle: TextStyle(color: zona.color, fontSize: 11, fontWeight: FontWeight.w600),
+            )).toList(),
+          ),
         MarkerLayer(
           markers: reportes.map((reporte) => _buildMarker(reporte, theme)).toList(),
         ),
@@ -141,6 +173,15 @@ class MiniMapWidget extends StatelessWidget {
       zoom: 12.0,
       height: 160,
       interactive: false,
+      showZonas: false,
     );
   }
+}
+
+class _ZonaProtegida {
+  const _ZonaProtegida({required this.nombre, required this.color, required this.puntos});
+
+  final String nombre;
+  final Color color;
+  final List<LatLng> puntos;
 }
