@@ -258,35 +258,52 @@ class _Sidebar extends StatelessWidget {
                 if (!sidebarCollapsed)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: Text(
-                            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colorScheme.primary),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => _showProfileDialog(context, userName, userRol, colorScheme, textTheme),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: colorScheme.primaryContainer,
+                            child: Text(
+                              userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colorScheme.primary),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                userName.isNotEmpty ? userName : 'Usuario',
-                                style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                userRol.isNotEmpty ? userRol : 'En línea',
-                                style: textTheme.bodySmall?.copyWith(color: Colors.green, fontSize: 10),
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName.isNotEmpty ? userName : 'Usuario',
+                                  style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  userRol.isNotEmpty ? userRol : 'En línea',
+                                  style: textTheme.bodySmall?.copyWith(color: Colors.green, fontSize: 10),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                  )
+                else
+                  IconButton(
+                    onPressed: () => _showProfileDialog(context, userName, userRol, colorScheme, textTheme),
+                    icon: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: colorScheme.primaryContainer,
+                      child: Text(
+                        userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colorScheme.primary),
+                      ),
+                    ),
+                    tooltip: 'Mi perfil',
                   ),
                 SizedBox(
                   width: double.infinity,
@@ -381,4 +398,75 @@ class _NavItem extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showProfileDialog(BuildContext context, String userName, String userRol, ColorScheme colorScheme, TextTheme textTheme) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: colorScheme.primaryContainer,
+                child: Text(
+                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                userName.isNotEmpty ? userName : 'Usuario',
+                style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  userRol.isNotEmpty ? userRol : 'Sin rol',
+                  style: TextStyle(color: colorScheme.primary, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.circle, size: 10, color: Colors.green),
+                  const SizedBox(width: 8),
+                  Text('Estado: En línea', style: textTheme.bodyMedium),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.security, size: 16, color: colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Text('Sesión activa', style: textTheme.bodyMedium),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonal(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cerrar'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
