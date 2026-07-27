@@ -5,11 +5,12 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Extension, Json, Router, extract::State, middleware, routing::{get, post}};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use validator::Validate;
 
 use crate::error::ErrorApi;
+use crate::middleware::exigir_jwt;
 use crate::respuesta::RespuestaExitosa;
 use crate::estado::EstadoApp;
 
@@ -24,10 +25,15 @@ const DURACION_TOKEN_SEGUNDOS: i64 = 60 * 60 * 24;
 
 /// Router del módulo usuarios: `/usuarios`, `/auth/login`, `/auth/refresh`.
 pub fn rutas() -> Router<EstadoApp> {
+    let rutas_protegidas = Router::new()
+        .route("/usuarios/me", get(obtener_usuario_actual))
+        .route_layer(middleware::from_fn(exigir_jwt));
+
     Router::new()
         .route("/usuarios", post(crear_usuario))
         .route("/auth/login", post(login))
         .route("/auth/refresh", post(refrescar_token))
+        .merge(rutas_protegidas)
 }
 
 /// `POST /api/v1/usuarios` — crea un nuevo usuario con la contraseña
@@ -134,6 +140,22 @@ async fn refrescar_token(
         token,
         tipo: "Bearer".to_string(),
     }))
+}
+
+/// `GET /api/v1/usuarios/me` — devuelve los datos del usuario autenticado
+/// (nombre, correo, rol), a partir del código en el JWT. Requiere JWT válido.
+async fn obtener_usuario_actual(
+    State(estado): State<EstadoApp>,
+    Extension(claims): Extension<ClaimsJwt>,
+) -> Result<impl axum::response::IntoResponse, ErrorApi> {
+    let codigo_usuario = uuid::Uuid::parse_str(&claims.sub)
+        .map_err(|_| ErrorApi::ErrorInterno("el token contiene un código de usuario inválido".to_string()))?;
+
+    let usuario = consultas::buscar_por_codigo(&estado.pool, codigo_usuario)
+        .await?
+        .ok_or(ErrorApi::NoAutenticado)?;
+
+    Ok(RespuestaExitosa::ok(UsuarioPublico::from(usuario)))
 }
 
 /// Genera un JWT firmado con HS256 para el usuario indicado.

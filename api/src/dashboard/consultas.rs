@@ -14,6 +14,14 @@ pub struct MetricasCrudo {
     pub zonas_afectadas: i64,
 }
 
+/// Un punto de la serie "denuncias por mes": mes (`YYYY-MM`) y cantidad de
+/// reportes creados en ese mes.
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
+pub struct DenunciasPorMes {
+    pub mes: String,
+    pub cantidad: i64,
+}
+
 /// Calcula el resumen acumulado para `GET /api/v1/dashboard/metricas`.
 pub async fn obtener_metricas(pool: &PgPool) -> Result<MetricasCrudo, sqlx::Error> {
     let total_reportes: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM reportes")
@@ -60,6 +68,23 @@ pub async fn obtener_metricas(pool: &PgPool) -> Result<MetricasCrudo, sqlx::Erro
         porcentaje_anonimos,
         zonas_afectadas,
     })
+}
+
+/// Cantidad de reportes creados por mes, agrupados con
+/// `date_trunc('month', ...)`, ordenados cronológicamente.
+pub async fn obtener_denuncias_por_mes(pool: &PgPool) -> Result<Vec<DenunciasPorMes>, sqlx::Error> {
+    sqlx::query_as::<_, DenunciasPorMes>(
+        r#"
+        SELECT
+            to_char(date_trunc('month', fecha_creacion), 'YYYY-MM') AS mes,
+            COUNT(*) AS cantidad
+        FROM reportes
+        GROUP BY date_trunc('month', fecha_creacion)
+        ORDER BY date_trunc('month', fecha_creacion)
+        "#,
+    )
+    .fetch_all(pool)
+    .await
 }
 
 /// Construye el GeoJSON (`FeatureCollection`) de los puntos de reportes

@@ -17,6 +17,11 @@ pub struct Configuracion {
     pub puerto: u16,
     /// Orígenes permitidos para CORS (app web y app mobile).
     pub cors_origenes: Vec<String>,
+    /// Carpeta local donde se guardan archivos subidos (fotos, PDFs).
+    /// Vive en el filesystem del contenedor: en Render (free tier) es
+    /// efímero y se pierde en cada redeploy/restart. Ver README para más
+    /// detalles y alternativas (S3, R2, etc.) si se necesita persistencia.
+    pub carpeta_archivos: String,
 }
 
 impl Configuracion {
@@ -43,11 +48,15 @@ impl Configuracion {
             .filter(|origen| !origen.is_empty())
             .collect();
 
+        // Opcional: por defecto "./uploads" si no se especifica.
+        let carpeta_archivos = env::var("CARPETA_ARCHIVOS").unwrap_or_else(|_| "./uploads".to_string());
+
         Configuracion {
             database_url,
             jwt_secret,
             puerto,
             cors_origenes,
+            carpeta_archivos,
         }
     }
 }
