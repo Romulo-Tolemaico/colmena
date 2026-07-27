@@ -21,6 +21,7 @@ class AppShell extends StatelessWidget {
     this.userName = '',
     this.userRol = '',
     this.reportes = const [],
+    this.onChatMessage,
   });
 
   final AppView view;
@@ -37,6 +38,7 @@ class AppShell extends StatelessWidget {
   final String userName;
   final String userRol;
   final List<Reporte> reportes;
+  final Future<String?> Function(String mensaje)? onChatMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +170,7 @@ class AppShell extends StatelessWidget {
             Positioned(
               bottom: 24,
               right: 24,
-              child: FloatingChat(reportes: reportes),
+              child: FloatingChat(reportes: reportes, onSendMessage: onChatMessage),
             ),
           ],
         ),

@@ -58,6 +58,8 @@ class _ColmenaAppState extends State<ColmenaApp> {
         _userRol = session.rol;
         _authState = AuthState.authenticated;
       });
+      // Obtener datos reales del usuario si hay conexión
+      _fetchUserProfile();
       _loadData();
     } else {
       setState(() => _authState = AuthState.login);
@@ -71,12 +73,22 @@ class _ColmenaAppState extends State<ColmenaApp> {
     final metricasResult = await _api.getMetricas();
     if (metricasResult.isSuccess) {
       final d = metricasResult.data!;
+      // Parsear denuncias_por_mes del API si viene
+      final denunciasPorMesRaw = (d['denuncias_por_mes'] as List<dynamic>?) ?? [];
+      final seriesFromApi = denunciasPorMesRaw.map((item) {
+        final m = item as Map<String, dynamic>;
+        return SerieMensual(
+          mes: m['mes'] as String? ?? '',
+          cantidad: (m['cantidad'] as num?)?.toInt() ?? 0,
+        );
+      }).toList();
+
       metricasBase = MetricasDashboard(
         totalDenuncias: (d['total_reportes'] as num?)?.toInt() ?? 0,
         mercurioAcumuladoKg: (d['mercurio_acumulado_kg'] as num?)?.toDouble() ?? 0.0,
         zonasProtegidasAfectadas: (d['zonas_afectadas'] as num?)?.toInt() ?? 0,
         porcentajeAnonimas: (d['porcentaje_anonimos'] as num?)?.toInt() ?? 0,
-        denunciasPorMes: const [],
+        denunciasPorMes: seriesFromApi,
       );
     }
 
@@ -87,26 +99,44 @@ class _ColmenaAppState extends State<ColmenaApp> {
       _reportes = lista.map((r) => _mapReporte(r as Map<String, dynamic>)).toList();
     }
 
-    // Calcular denuncias por mes desde los reportes cargados
-    final porMes = <String, int>{};
-    final mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    for (final r in _reportes) {
-      final key = '${mesesNombres[r.fecha.month - 1]} ${r.fecha.year}';
-      porMes[key] = (porMes[key] ?? 0) + 1;
+    // Si la API no devolvió denuncias_por_mes, calcular localmente
+    if (metricasBase != null && metricasBase.denunciasPorMes.isEmpty && _reportes.isNotEmpty) {
+      final porMes = <String, int>{};
+      final mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      for (final r in _reportes) {
+        final key = '${mesesNombres[r.fecha.month - 1]} ${r.fecha.year}';
+        porMes[key] = (porMes[key] ?? 0) + 1;
+      }
+      _metricas = MetricasDashboard(
+        totalDenuncias: metricasBase.totalDenuncias,
+        mercurioAcumuladoKg: metricasBase.mercurioAcumuladoKg,
+        zonasProtegidasAfectadas: metricasBase.zonasProtegidasAfectadas,
+        porcentajeAnonimas: metricasBase.porcentajeAnonimas,
+        denunciasPorMes: porMes.entries.map((e) => SerieMensual(mes: e.key, cantidad: e.value)).toList(),
+      );
+    } else {
+      _metricas = metricasBase;
     }
-    final seriesMensuales = porMes.entries
-        .map((e) => SerieMensual(mes: e.key, cantidad: e.value))
-        .toList();
-
-    _metricas = MetricasDashboard(
-      totalDenuncias: metricasBase?.totalDenuncias ?? _reportes.length,
-      mercurioAcumuladoKg: metricasBase?.mercurioAcumuladoKg ?? 0.0,
-      zonasProtegidasAfectadas: metricasBase?.zonasProtegidasAfectadas ?? 0,
-      porcentajeAnonimas: metricasBase?.porcentajeAnonimas ?? 0,
-      denunciasPorMes: seriesMensuales,
-    );
 
     setState(() => _loading = false);
+  }
+
+  Future<void> _fetchUserProfile() async {
+    final result = await _api.getUsuarioActual();
+    if (result.isSuccess) {
+      final user = result.data!;
+      setState(() {
+        _userName = user.nombre;
+        _userRol = user.rolCodigo;
+      });
+      // Actualizar sesión persistida con nombre real
+      await _session.save(UserSession(
+        token: _api.token!,
+        nombre: user.nombre,
+        correo: user.correo,
+        rol: user.rolCodigo,
+      ));
+    }
   }
 
   Reporte _mapReporte(Map<String, dynamic> json) {
@@ -219,6 +249,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
         _authState = AuthState.authenticated;
         _authError = null;
       });
+      _fetchUserProfile();
       _loadData();
     } else {
       setState(() => _authError = result.error);
@@ -325,12 +356,20 @@ class _ColmenaAppState extends State<ColmenaApp> {
           userName: _userName,
           userRol: _userRol,
           reportes: _reportes,
+          onChatMessage: (mensaje) async {
+            final result = await _api.chatDashboard(mensaje);
+            return result.isSuccess ? result.data : null;
+          },
           detailPane: _selectedReporte == null
               ? null
               : ReportDetailPanel(
                   reporte: _selectedReporte!,
                   onClose: _clearReporteSelection,
                   onCambiarEstado: _handleCambiarEstado,
+                  onGenerarPdf: (codigo) async {
+                    final result = await _api.generarPdf(codigo);
+                    return result.isSuccess ? result.data : null;
+                  },
                 ),
           child: switch (_view) {
             AppView.dashboard => DashboardScreen(

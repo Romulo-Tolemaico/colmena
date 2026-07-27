@@ -4,11 +4,20 @@ import '../models/reporte.dart';
 import 'map_widget.dart';
 
 class ReportDetailPanel extends StatefulWidget {
-  const ReportDetailPanel({super.key, required this.reporte, required this.onClose, this.onCambiarEstado});
+  const ReportDetailPanel({
+    super.key,
+    required this.reporte,
+    required this.onClose,
+    this.onCambiarEstado,
+    this.onGenerarPdf,
+    this.fotosUrls,
+  });
 
   final Reporte reporte;
   final VoidCallback onClose;
   final Future<void> Function(String codigo, String nuevoEstado)? onCambiarEstado;
+  final Future<String?> Function(String codigo)? onGenerarPdf;
+  final List<String>? fotosUrls;
 
   @override
   State<ReportDetailPanel> createState() => _ReportDetailPanelState();
@@ -233,14 +242,26 @@ class _ReportDetailPanelState extends State<ReportDetailPanel> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () {
-                      // TODO: Conectar con backend para generar PDF real
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Generación de PDF disponible cuando se conecte el backend.'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                    onPressed: () async {
+                      if (widget.onGenerarPdf != null) {
+                        final url = await widget.onGenerarPdf!(widget.reporte.id);
+                        if (url != null && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('PDF generado: $url'),
+                              behavior: SnackBarBehavior.floating,
+                              action: SnackBarAction(label: 'Abrir', onPressed: () {}),
+                            ),
+                          );
+                        }
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Generación de PDF disponible cuando se conecte el backend.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                     icon: const Icon(Icons.picture_as_pdf),
                     label: const Text('Descargar reporte PDF'),

@@ -2,12 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/// Servicio central para comunicarse con la API de Colmena.
-/// Maneja la URL base, el token JWT, y las llamadas HTTP.
-///
-/// La URL base es configurable en tiempo de compilación con --dart-define,
-/// sin tener que editar código:
-///   flutter run --dart-define=API_BASE_URL=http://192.168.1.42:3000/api/v1
+/// Servicio central para comunicarse con la API de Colmena (Panel Web).
+/// Maneja la URL base, el token JWT, y todas las llamadas HTTP.
 class ApiService {
   ApiService({String? baseUrl})
       : _baseUrl = baseUrl ??
@@ -21,6 +17,12 @@ class ApiService {
 
   String? get token => _token;
   bool get isAuthenticated => _token != null;
+
+  /// URL base del servidor (sin /api/v1) para construir URLs de archivos.
+  String get serverBase {
+    final uri = Uri.parse(_baseUrl);
+    return '${uri.scheme}://${uri.host}:${uri.port}';
+  }
 
   void setToken(String? token) => _token = token;
 
@@ -72,6 +74,21 @@ class ApiService {
     return ApiResult.error(res.errorMessage ?? 'Error al registrar');
   }
 
+  /// Obtiene los datos del usuario autenticado (GET /usuarios/me).
+  Future<ApiResult<UserResponse>> getUsuarioActual() async {
+    final res = await _get('/usuarios/me');
+    if (res.ok) {
+      final data = res.data!;
+      return ApiResult.success(UserResponse(
+        codigo: data['codigo'] as String? ?? '',
+        nombre: data['nombre'] as String? ?? '',
+        correo: data['correo'] as String? ?? '',
+        rolCodigo: data['rol_codigo'] as String? ?? '',
+      ));
+    }
+    return ApiResult.error(res.errorMessage ?? 'Error al obtener usuario');
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Dashboard
   // ─────────────────────────────────────────────────────────────────────────
@@ -86,6 +103,16 @@ class ApiService {
     final res = await _get('/dashboard/mapa');
     if (res.ok) return ApiResult.success(res.data!);
     return ApiResult.error(res.errorMessage ?? 'Error al cargar mapa');
+  }
+
+  /// Chat del dashboard: envía una pregunta y recibe respuesta del servidor.
+  Future<ApiResult<String>> chatDashboard(String mensaje) async {
+    final res = await _post('/dashboard/chat', {'mensaje': mensaje});
+    if (res.ok) {
+      final respuesta = res.data?['respuesta'] as String? ?? '';
+      return ApiResult.success(respuesta);
+    }
+    return ApiResult.error(res.errorMessage ?? 'Error en el chat');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -124,6 +151,26 @@ class ApiService {
     });
     if (res.ok) return ApiResult.success(res.data!);
     return ApiResult.error(res.errorMessage ?? 'Error al cambiar estado');
+  }
+
+  /// Lista las fotos de un reporte. Retorna URLs completas.
+  Future<ApiResult<List<String>>> listarFotos(String codigoReporte) async {
+    final res = await _get('/reportes/$codigoReporte/fotos');
+    if (res.ok) {
+      final fotos = (res.data?['fotos'] as List<dynamic>?)?.cast<String>() ?? [];
+      return ApiResult.success(fotos.map((f) => '$serverBase/archivos/$f').toList());
+    }
+    return ApiResult.error(res.errorMessage ?? 'Error al cargar fotos');
+  }
+
+  /// Genera el PDF de un reporte. Retorna la URL del archivo.
+  Future<ApiResult<String>> generarPdf(String codigoReporte) async {
+    final res = await _post('/reportes/$codigoReporte/pdf', {});
+    if (res.ok) {
+      final ruta = res.data?['ruta_archivo'] as String? ?? '';
+      return ApiResult.success('$serverBase/archivos/$ruta');
+    }
+    return ApiResult.error(res.errorMessage ?? 'Error al generar PDF');
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -173,13 +220,11 @@ class ApiService {
         return _RawResponse(ok: true, data: json['data'] as Map<String, dynamic>?);
       }
 
-      // Error del API
       final error = json['error'] as Map<String, dynamic>?;
       final mensaje = error?['mensaje'] as String? ?? 'Error desconocido';
       return _RawResponse(ok: false, errorMessage: mensaje);
     } catch (_) {
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Respuesta ok pero no JSON (ej: /health)
         return _RawResponse(ok: true);
       }
       return _RawResponse(ok: false, errorMessage: 'Error del servidor (${response.statusCode})');
@@ -191,7 +236,6 @@ class ApiService {
 
 class _RawResponse {
   const _RawResponse({required this.ok, this.data, this.errorMessage});
-
   final bool ok;
   final Map<String, dynamic>? data;
   final String? errorMessage;
@@ -200,29 +244,20 @@ class _RawResponse {
 class ApiResult<T> {
   ApiResult.success(this.data) : error = null;
   ApiResult.error(this.error) : data = null;
-
   final T? data;
   final String? error;
-
   bool get isSuccess => data != null;
   bool get isError => error != null;
 }
 
 class LoginResponse {
   const LoginResponse({required this.token, required this.tipo});
-
   final String token;
   final String tipo;
 }
 
 class UserResponse {
-  const UserResponse({
-    required this.codigo,
-    required this.nombre,
-    required this.correo,
-    required this.rolCodigo,
-  });
-
+  const UserResponse({required this.codigo, required this.nombre, required this.correo, required this.rolCodigo});
   final String codigo;
   final String nombre;
   final String correo;

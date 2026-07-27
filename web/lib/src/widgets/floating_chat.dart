@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/reporte.dart';
 
 /// Widget de chat flotante tipo burbuja.
-/// Responde preguntas basándose en los datos de reportes cargados.
+/// Responde preguntas usando el endpoint POST /dashboard/chat del API,
+/// con fallback local si no hay conexión.
 class FloatingChat extends StatefulWidget {
-  const FloatingChat({super.key, this.reportes = const []});
+  const FloatingChat({super.key, this.reportes = const [], this.onSendMessage});
 
   final List<Reporte> reportes;
+  final Future<String?> Function(String mensaje)? onSendMessage;
 
   @override
   State<FloatingChat> createState() => _FloatingChatState();
@@ -41,10 +43,16 @@ class _FloatingChatState extends State<FloatingChat> {
       _controller.clear();
     });
 
-    // Generar respuesta inteligente basada en los datos
-    Future.delayed(const Duration(milliseconds: 400), () {
+    // Generar respuesta: primero intenta el API, luego fallback local
+    Future.delayed(const Duration(milliseconds: 200), () async {
+      String response;
+      if (widget.onSendMessage != null) {
+        final apiResponse = await widget.onSendMessage!(text);
+        response = apiResponse ?? _generateResponse(text);
+      } else {
+        response = _generateResponse(text);
+      }
       if (mounted) {
-        final response = _generateResponse(text);
         setState(() {
           _messages.add(_ChatMessage(author: 'Colmena', text: response, isBot: true));
         });
