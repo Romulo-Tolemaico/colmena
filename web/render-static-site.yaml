@@ -1,0 +1,21 @@
+# Configuración para Render Static Site.
+# Este archivo es de referencia; la configuración real se pone
+# directamente en el dashboard de Render al crear el servicio.
+#
+# Configuración en el dashboard:
+#   Name:             colmena-web
+#   Branch:           develop
+#   Root Directory:   web
+#   Build Command:    bash build.sh
+#   Publish Directory: build/web
+#
+# Variables de entorno (para el build):
+#   API_BASE_URL = https://colmena-api.onrender.com/api/v1
+#
+# Rewrite/Redirect rules (en la pestaña "Redirects/Rewrites"):
+#   Source: /*
+#   Destination: /index.html
+#   Action: Rewrite
+#
+# Esto es necesario para que Flutter Web (SPA) funcione correctamente
+# al refrescar en rutas como /dashboard, /login, etc.
