@@ -5,20 +5,19 @@
 
 set -e
 
-# Instalar Flutter SDK si no está disponible
-if ! command -v flutter &> /dev/null; then
+# Instalar Flutter SDK en el directorio de trabajo (Render no permite
+# escribir en /opt ni /usr/local, pero sí en el working directory).
+if [ ! -d ".flutter-sdk" ]; then
   echo "==> Instalando Flutter SDK..."
-  git clone https://github.com/flutter/flutter.git --depth 1 --branch stable /opt/flutter
-  export PATH="/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:$PATH"
+  git clone https://github.com/flutter/flutter.git --depth 1 --branch stable .flutter-sdk
 fi
+
+export PATH="$PWD/.flutter-sdk/bin:$PWD/.flutter-sdk/bin/cache/dart-sdk/bin:$PATH"
 
 flutter --version
 flutter pub get
 
 # URL del API en producción (se pasa como variable de entorno de Render).
-# Si no está definida, usa un valor por defecto vacío que hará que la app
-# intente conectar a localhost (no funcionará en producción, pero al menos
-# compila).
 API_URL="${API_BASE_URL:-https://colmena-api.onrender.com/api/v1}"
 
 echo "==> Compilando Flutter web con API_BASE_URL=$API_URL"
