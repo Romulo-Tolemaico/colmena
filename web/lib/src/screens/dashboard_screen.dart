@@ -13,6 +13,7 @@ class DashboardScreen extends StatelessWidget {
     required this.onOpenReporte,
     required this.selectedReporteId,
     this.onFilter,
+    this.onVerTodos,
   });
 
   final List<Reporte> reportes;
@@ -21,6 +22,7 @@ class DashboardScreen extends StatelessWidget {
   final ValueChanged<String> onOpenReporte;
   final String? selectedReporteId;
   final void Function({String? estado, String? fecha})? onFilter;
+  final VoidCallback? onVerTodos;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +99,7 @@ class DashboardScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           flex: 3,
-                          child: _SideInfoPanel(reportes: reportes, metricas: metricas, onOpenReporte: onOpenReporte),
+                          child: _SideInfoPanel(reportes: reportes, metricas: metricas, onOpenReporte: onOpenReporte, onVerTodos: onVerTodos),
                         ),
                       ],
                     ),
@@ -114,7 +116,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _SideInfoPanel(reportes: reportes, metricas: metricas, onOpenReporte: onOpenReporte),
+                    _SideInfoPanel(reportes: reportes, metricas: metricas, onOpenReporte: onOpenReporte, onVerTodos: onVerTodos),
                   ],
                 );
               },
@@ -334,11 +336,12 @@ class _LegendItem extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SideInfoPanel extends StatelessWidget {
-  const _SideInfoPanel({required this.reportes, required this.metricas, required this.onOpenReporte});
+  const _SideInfoPanel({required this.reportes, required this.metricas, required this.onOpenReporte, this.onVerTodos});
 
   final List<Reporte> reportes;
   final MetricasDashboard? metricas;
   final ValueChanged<String> onOpenReporte;
+  final VoidCallback? onVerTodos;
 
   @override
   Widget build(BuildContext context) {
@@ -440,7 +443,7 @@ class _SideInfoPanel extends StatelessWidget {
                       Text('Actividad reciente', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                       const Spacer(),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: onVerTodos ?? () {},
                         style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
                         child: const Text('Ver todos', style: TextStyle(fontSize: 12)),
                       ),
