@@ -26,22 +26,25 @@ class MapWidget extends StatelessWidget {
   final bool interactive;
   final bool showZonas;
 
-  // Zonas protegidas reales (polígonos simplificados)
+  // Zonas protegidas reales de Bolivia (polígonos simplificados basados en coordenadas documentadas)
   static final List<_ZonaProtegida> _zonas = [
     _ZonaProtegida(
       nombre: 'Reserva Manuripi',
       color: Colors.green,
-      puntos: [LatLng(-11.0, -68.0), LatLng(-11.0, -67.0), LatLng(-12.0, -67.0), LatLng(-12.0, -68.0)],
+      // Pando: 67°11'W a 68°59'W, 11°17'S a 12°31'S
+      puntos: [LatLng(-11.28, -68.98), LatLng(-11.28, -67.18), LatLng(-12.52, -67.18), LatLng(-12.52, -68.98)],
     ),
     _ZonaProtegida(
       nombre: 'Territorio Indígena Multiétnico II',
       color: Colors.purple,
-      puntos: [LatLng(-10.5, -69.0), LatLng(-10.5, -68.0), LatLng(-11.5, -68.0), LatLng(-11.5, -69.0)],
+      // Entre ríos Madre de Dios y Beni, norte de Bolivia (Beni/Pando)
+      puntos: [LatLng(-11.0, -66.5), LatLng(-11.0, -65.2), LatLng(-12.2, -65.2), LatLng(-12.2, -66.5)],
     ),
     _ZonaProtegida(
-      nombre: 'Bajo Madidi',
+      nombre: 'Parque Nacional Madidi',
       color: Colors.blue,
-      puntos: [LatLng(-10.0, -68.5), LatLng(-10.0, -67.5), LatLng(-11.0, -67.5), LatLng(-11.0, -68.5)],
+      // Noroeste La Paz: centro 13°48'S 67°38'W, aprox 18,958 km2
+      puntos: [LatLng(-13.0, -68.8), LatLng(-13.0, -67.2), LatLng(-15.0, -67.2), LatLng(-15.0, -68.8)],
     ),
   ];
 
