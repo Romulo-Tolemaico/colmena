@@ -5,7 +5,7 @@
 # ============================================================
 
 # --- Etapa 1: compilar el binario en release ---
-FROM rust:1.83-slim-bookworm AS builder
+FROM rust:1.85-slim-bookworm AS builder
 
 # Dependencias del sistema necesarias para compilar sqlx (TLS) y ring
 RUN apt-get update && apt-get install -y \
