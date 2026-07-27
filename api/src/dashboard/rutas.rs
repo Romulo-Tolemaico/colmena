@@ -82,12 +82,16 @@ async fn chat(
         if !api_key.is_empty() {
             let contexto = format!(
                 "Eres el asistente IA de Colmena, un sistema de monitoreo comunitario contra la minería ilegal en ríos de Bolivia. \
+                 REGLA IMPORTANTE: Solo respondes sobre temas de minería ilegal, monitoreo ambiental, ríos, mercurio, reportes del sistema, \
+                 normativa ambiental boliviana y protección de ecosistemas. Si el usuario pregunta sobre cualquier otro tema \
+                 (recetas, deportes, programación, etc.), responde amablemente: \
+                 'Solo puedo ayudarte con temas relacionados a la minería ilegal y monitoreo ambiental. ¿Tienes alguna pregunta sobre los reportes o el sistema?'\n\n\
                  Datos actuales del sistema:\n\
                  - Total de reportes: {}\n\
                  - Mercurio acumulado estimado: {:.2} kg\n\
                  - Zonas protegidas afectadas: {}\n\
                  - Porcentaje de reportes anónimos: {:.1}%\n\n\
-                 Responde de forma concisa y útil en español. Si preguntan algo fuera del tema ambiental/minería, redirige amablemente.",
+                 Responde de forma concisa y útil en español.",
                 metricas.total_reportes, metricas.mercurio_acumulado_kg,
                 metricas.zonas_afectadas, metricas.porcentaje_anonimos
             );
