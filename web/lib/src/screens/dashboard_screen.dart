@@ -54,11 +54,6 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                FilledButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nuevo reporte'),
-                ),
               ],
             ),
           ),
@@ -158,7 +153,6 @@ class _MetricsRow extends StatelessWidget {
     final enVerificacion = reportes.where((r) => r.estado == EstadoReporte.revisado).length;
     final confirmados = reportes.where((r) => r.estado == EstadoReporte.escalado).length;
     final riosAfectados = metricas?.zonasProtegidasAfectadas ?? 0;
-    final comunidades = reportes.map((r) => r.zonaProtegida.nombre).whereType<String>().toSet().length;
     final mercurio = metricas?.mercurioAcumuladoKg ?? reportes.fold<double>(0.0, (sum, r) => sum + r.mercurioEstimadoKg);
 
     return Wrap(
@@ -195,12 +189,6 @@ class _MetricsRow extends StatelessWidget {
           value: riosAfectados.toString(),
           icon: Icons.shield_outlined,
           color: const Color(0xFF42A5F5),
-        ),
-        _MetricCard(
-          title: 'Comunidades activas',
-          value: comunidades.toString(),
-          icon: Icons.groups_outlined,
-          color: const Color(0xFF7E57C2),
         ),
       ],
     );
