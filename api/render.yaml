@@ -1,0 +1,35 @@
+# render.yaml — Blueprint declarativo para deployar la API en Render.
+# Conecta tu repo de GitHub a Render y este archivo define el servicio
+# automáticamente. Ver: https://render.com/docs/infrastructure-as-code
+#
+# Para usar sin Docker (entorno nativo de Rust en Render):
+#   - Root Directory: api
+#   - Build Command: cargo build --release
+#   - Start Command: ./target/release/api
+#
+# Para usar con Docker (recomendado, más control):
+#   - Root Directory: api
+#   - Dockerfile Path: ./Dockerfile
+#   - Las variables de entorno se configuran abajo.
+
+services:
+  - type: web
+    name: colmena-api
+    runtime: docker
+    rootDir: api
+    dockerfilePath: ./Dockerfile
+    branch: develop
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # se configura manualmente en el dashboard de Render
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: "3000"
+      - key: CORS_ORIGENES
+        value: "*"
+      - key: CARPETA_ARCHIVOS
+        value: "/app/uploads"
+      - key: RUST_LOG
+        value: "info,api=debug"
+    healthCheckPath: /health
