@@ -393,6 +393,7 @@ class _ColmenaAppState extends State<ColmenaApp> {
               selectedReporteId: _selectedReporteId,
               onFilter: ({String? estado, String? fecha}) => _loadData(estado: estado, fecha: fecha),
               onVerTodos: () => setState(() => _view = AppView.historial),
+              onVerAlertas: () => setState(() => _view = AppView.alertas),
             ),
             AppView.historial => HistorialScreen(
               reportes: _reportes,

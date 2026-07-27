@@ -14,6 +14,7 @@ class DashboardScreen extends StatelessWidget {
     required this.selectedReporteId,
     this.onFilter,
     this.onVerTodos,
+    this.onVerAlertas,
   });
 
   final List<Reporte> reportes;
@@ -23,6 +24,7 @@ class DashboardScreen extends StatelessWidget {
   final String? selectedReporteId;
   final void Function({String? estado, String? fecha})? onFilter;
   final VoidCallback? onVerTodos;
+  final VoidCallback? onVerAlertas;
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +129,7 @@ class DashboardScreen extends StatelessWidget {
 
           // Alertas activas al fondo
           SliverToBoxAdapter(
-            child: _AlertasBanner(reportes: reportes, onOpenReporte: onOpenReporte),
+            child: _AlertasBanner(reportes: reportes, onOpenReporte: onOpenReporte, onVerTodas: onVerAlertas),
           ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -506,10 +508,11 @@ class _SideInfoPanel extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AlertasBanner extends StatelessWidget {
-  const _AlertasBanner({required this.reportes, required this.onOpenReporte});
+  const _AlertasBanner({required this.reportes, required this.onOpenReporte, this.onVerTodas});
 
   final List<Reporte> reportes;
   final ValueChanged<String> onOpenReporte;
+  final VoidCallback? onVerTodas;
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +532,7 @@ class _AlertasBanner extends StatelessWidget {
                 Text('Alertas activas', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: onVerTodas ?? () {},
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
                   child: const Text('Ver todas', style: TextStyle(fontSize: 12)),
                 ),
