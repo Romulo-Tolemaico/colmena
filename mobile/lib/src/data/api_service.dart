@@ -96,7 +96,7 @@ class MobileApiService {
       final response = await http.get(
         Uri.parse('$_baseUrl/reportes?pagina=$pagina&por_pagina=$porPagina'),
         headers: _headers,
-      );
+      ).timeout(const Duration(seconds: 8));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -143,8 +143,15 @@ class MobileApiService {
       for (final path in paths) {
         final file = File(path);
         if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath('foto', path));
+          final length = await file.length();
+          if (length > 0) {
+            request.files.add(await http.MultipartFile.fromPath('foto', path, filename: path.split('/').last));
+          }
         }
+      }
+
+      if (request.files.isEmpty) {
+        return ApiResult.error('No se encontraron fotos para subir');
       }
 
       final streamedResponse = await request.send();

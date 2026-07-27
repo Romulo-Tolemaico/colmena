@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../data/api_service.dart';
 import '../models/registro.dart';
 
 /// Pantalla de resultado después de generar el reporte.
 /// Muestra impacto estimado, zona protegida, normativa, contacto opcional y PDF.
 class ReportResultScreen extends StatefulWidget {
-  const ReportResultScreen({super.key, required this.registro});
+  const ReportResultScreen({super.key, required this.registro, required this.api});
 
   final Registro registro;
+  final MobileApiService api;
 
   @override
   State<ReportResultScreen> createState() => _ReportResultScreenState();
@@ -17,12 +20,43 @@ class _ReportResultScreenState extends State<ReportResultScreen> {
   final _aliasController = TextEditingController();
   final _celularController = TextEditingController();
   bool _showContactForm = false;
+  bool _downloadingPdf = false;
 
   @override
   void dispose() {
     _aliasController.dispose();
     _celularController.dispose();
     super.dispose();
+  }
+
+  Future<void> _downloadPdf() async {
+    setState(() => _downloadingPdf = true);
+    final result = await widget.api.generarPdf(widget.registro.id);
+    setState(() => _downloadingPdf = false);
+
+    if (!mounted) return;
+
+    if (result.isSuccess && result.data!.isNotEmpty) {
+      final uri = Uri.parse(result.data!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnack('PDF generado pero no se pudo abrir: ${result.data}');
+      }
+    } else {
+      _showSnack(result.error ?? 'Error al generar el PDF');
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _finish(BuildContext context, {required bool anonymous}) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -64,7 +98,7 @@ class _ReportResultScreenState extends State<ReportResultScreen> {
                   Text('Reporte registrado', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 4),
                   Text(
-                    'ID: ${registro.id}',
+                    'ID: ${registro.id.length > 12 ? '${registro.id.substring(0, 12)}...' : registro.id}',
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ],
@@ -161,87 +195,22 @@ class _ReportResultScreenState extends State<ReportResultScreen> {
               const SizedBox(height: 24),
             ],
 
-            // Sección de contacto opcional
-            const Divider(),
-            const SizedBox(height: 16),
-
-            Text(
-              '¿Quieres dejar un contacto?',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Opcional: por si la organización necesita más información.',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-
-            if (!_showContactForm) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _finish(context, anonymous: true),
-                      child: const Text('Omitir'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.tonal(
-                      onPressed: () => setState(() => _showContactForm = true),
-                      child: const Text('Dejar contacto'),
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              TextField(
-                controller: _aliasController,
-                decoration: const InputDecoration(
-                  labelText: 'Alias o nombre (opcional)',
-                  hintText: 'Ej: Río Claro',
-                  prefixIcon: Icon(Icons.person_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _celularController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Celular (opcional)',
-                  hintText: 'Ej: 725-11445',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => _finish(context, anonymous: false),
-                child: const Text('Continuar'),
-              ),
-            ],
-
+            // Acciones
             const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
 
-            // Botones finales
+            // Botón PDF real
             FilledButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PDF disponible cuando se conecte el backend.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              icon: const Icon(Icons.picture_as_pdf),
-              label: const Text('Descargar reporte PDF'),
+              onPressed: _downloadingPdf ? null : _downloadPdf,
+              icon: _downloadingPdf
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.picture_as_pdf),
+              label: Text(_downloadingPdf ? 'Generando PDF...' : 'Descargar reporte PDF'),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () => _finish(context, anonymous: true),
-              icon: const Icon(Icons.send),
-              label: const Text('Enviar a mi organización'),
+              icon: const Icon(Icons.home_outlined),
+              label: const Text('Volver al inicio'),
             ),
 
             // Nota de metodología
@@ -253,7 +222,7 @@ class _ReportResultScreenState extends State<ReportResultScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
-                'Esta estimación se basa en observación a distancia segura y no reemplaza una medición técnica de campo. Su propósito es dar una base razonable de evidencia inicial.',
+                'Esta estimación se basa en observación a distancia segura y no reemplaza una medición técnica de campo.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontStyle: FontStyle.italic,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -264,11 +233,6 @@ class _ReportResultScreenState extends State<ReportResultScreen> {
         ),
       ),
     );
-  }
-
-  void _finish(BuildContext context, {required bool anonymous}) {
-    // TODO: Guardar contacto si se proporcionó, luego volver al home
-    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 }
 
@@ -282,7 +246,6 @@ class _MercuryIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Normalizar: 0-30 kg como rango visual
     final ratio = (kg / 30).clamp(0.0, 1.0);
     final color = Color.lerp(Colors.orange, Colors.red, ratio)!;
 
@@ -296,9 +259,7 @@ class _MercuryIndicator extends StatelessWidget {
               children: [
                 Icon(Icons.science_outlined, color: color, size: 22),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Text('Mercurio estimado liberado', style: theme.textTheme.bodyMedium),
-                ),
+                Expanded(child: Text('Mercurio estimado liberado', style: theme.textTheme.bodyMedium)),
                 Text(
                   '${kg.toStringAsFixed(1)} kg',
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: color),

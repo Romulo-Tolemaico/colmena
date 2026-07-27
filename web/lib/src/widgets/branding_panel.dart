@@ -40,9 +40,9 @@ class AuthLayout extends StatelessWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  const Color(0xFF0A1F0A).withValues(alpha: 0.55),
                   const Color(0xFF0A1F0A).withValues(alpha: 0.35),
-                  const Color(0xFF0A1F0A).withValues(alpha: 0.5),
+                  const Color(0xFF0A1F0A).withValues(alpha: 0.2),
+                  const Color(0xFF0A1F0A).withValues(alpha: 0.3),
                 ],
               ),
             ),
