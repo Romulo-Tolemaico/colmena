@@ -158,30 +158,60 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     if (result.isSuccess) {
-      // Mostrar resultado con datos mock del agente (el análisis real es asíncrono)
-      final mockResult = Registro(
-        id: result.data!,
-        fecha: DateTime.now(),
-        ubicacion: Ubicacion(lat: lat ?? -11.4162, lng: lng ?? -67.5441),
-        fotos: photos,
-        tamanoDraga: tamanoDraga,
-        tiempoOperando: tiempoOperando,
-        indicadores: IndicadoresVisibles(
-          personasVisibles: personasVisibles,
-          motobombasVisibles: motobombasVisibles,
-        ),
-        estadoSync: EstadoSync.sincronizado,
-        notas: notas,
-        mercurioEstimadoKg: 14.7,
-        zonaProtegida: const ZonaProtegida(esZonaProtegida: true, nombre: 'Reserva Manuripi'),
-        normativaCitada: const ['Ley 1333', 'D.S. 28592'],
-        danoEconomicoEstimado: 52000,
-        nivelRiesgo: NivelRiesgo.alto,
-        estadoReporte: EstadoReporte.nuevo,
-      );
+      final codigoReporte = result.data!;
 
+      // Subir fotos al servidor
+      await _api.subirFotos(codigoReporte, photos);
+
+      // Obtener detalle real con evaluación del agente
+      final detalleResult = await _api.getReporteDetalle(codigoReporte);
+
+      Registro registroResultado;
+      if (detalleResult.isSuccess) {
+        final d = detalleResult.data!;
+        final eval = d['evaluacion'] as Map<String, dynamic>?;
+        registroResultado = Registro(
+          id: codigoReporte,
+          fecha: DateTime.now(),
+          ubicacion: Ubicacion(lat: lat ?? -11.4162, lng: lng ?? -67.5441),
+          fotos: photos,
+          tamanoDraga: tamanoDraga,
+          tiempoOperando: tiempoOperando,
+          indicadores: IndicadoresVisibles(
+            personasVisibles: personasVisibles,
+            motobombasVisibles: motobombasVisibles,
+          ),
+          estadoSync: EstadoSync.sincronizado,
+          notas: notas,
+          mercurioEstimadoKg: (eval?['mercurio_estimado_kg'] as num?)?.toDouble(),
+          zonaProtegida: eval?['zona_codigo'] != null
+              ? ZonaProtegida(esZonaProtegida: true, nombre: eval!['zona_codigo'].toString())
+              : const ZonaProtegida(esZonaProtegida: false),
+          normativaCitada: eval?['normativa_codigo'] != null ? [eval!['normativa_codigo'].toString()] : null,
+          nivelRiesgo: _parseRiesgo(eval?['nivel_riesgo_codigo'] as String?),
+          estadoReporte: EstadoReporte.nuevo,
+        );
+      } else {
+        // Si no se pudo obtener el detalle, mostrar sin evaluación
+        registroResultado = Registro(
+          id: codigoReporte,
+          fecha: DateTime.now(),
+          ubicacion: Ubicacion(lat: lat ?? -11.4162, lng: lng ?? -67.5441),
+          fotos: photos,
+          tamanoDraga: tamanoDraga,
+          tiempoOperando: tiempoOperando,
+          indicadores: IndicadoresVisibles(
+            personasVisibles: personasVisibles,
+            motobombasVisibles: motobombasVisibles,
+          ),
+          estadoSync: EstadoSync.sincronizado,
+          notas: notas,
+        );
+      }
+
+      if (!mounted) return;
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ReportResultScreen(registro: mockResult)),
+        MaterialPageRoute(builder: (_) => ReportResultScreen(registro: registroResultado)),
       );
 
       // Recargar lista
