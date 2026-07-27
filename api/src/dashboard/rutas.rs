@@ -68,16 +68,45 @@ async fn obtener_mapa(
     Ok(RespuestaExitosa::ok(geojson))
 }
 
-/// `POST /api/v1/dashboard/chat` — responde preguntas simples sobre los
-/// datos del sistema usando reglas por palabra clave (sin LLM real todavía;
-/// queda documentado en `agent::reglas` como integración futura).
+/// `POST /api/v1/dashboard/chat` — responde preguntas usando Groq (Llama 3)
+/// con contexto de los datos del sistema. Si no hay API key configurada o
+/// falla la llamada, cae a un fallback local por keywords.
 async fn chat(
     State(estado): State<EstadoApp>,
     Json(peticion): Json<ChatPeticion>,
 ) -> Result<impl axum::response::IntoResponse, ErrorApi> {
-    let mensaje_normalizado = peticion.mensaje.to_lowercase();
     let metricas = consultas::obtener_metricas(&estado.pool).await?;
 
+    // Intentar Groq si hay API key
+    if let Some(api_key) = &estado.configuracion.groq_api_key {
+        if !api_key.is_empty() {
+            let contexto = format!(
+                "Eres el asistente IA de Colmena, un sistema de monitoreo comunitario contra la minería ilegal en ríos de Bolivia. \
+                 REGLA IMPORTANTE: Solo respondes sobre temas de minería ilegal, monitoreo ambiental, ríos, mercurio, reportes del sistema, \
+                 normativa ambiental boliviana y protección de ecosistemas. Si el usuario pregunta sobre cualquier otro tema \
+                 (recetas, deportes, programación, etc.), responde amablemente: \
+                 'Solo puedo ayudarte con temas relacionados a la minería ilegal y monitoreo ambiental. ¿Tienes alguna pregunta sobre los reportes o el sistema?'\n\n\
+                 Datos actuales del sistema:\n\
+                 - Total de reportes: {}\n\
+                 - Mercurio acumulado estimado: {:.2} kg\n\
+                 - Zonas protegidas afectadas: {}\n\
+                 - Porcentaje de reportes anónimos: {:.1}%\n\n\
+                 Responde de forma concisa y útil en español.",
+                metricas.total_reportes, metricas.mercurio_acumulado_kg,
+                metricas.zonas_afectadas, metricas.porcentaje_anonimos
+            );
+
+            match llamar_groq(api_key, &contexto, &peticion.mensaje).await {
+                Ok(respuesta) => return Ok(RespuestaExitosa::ok(ChatRespuesta { respuesta })),
+                Err(e) => {
+                    tracing::warn!("Groq falló, usando fallback: {e}");
+                }
+            }
+        }
+    }
+
+    // Fallback local por keywords
+    let mensaje_normalizado = peticion.mensaje.to_lowercase();
     let respuesta = if mensaje_normalizado.contains("mercurio") {
         format!(
             "Se estima un total acumulado de {:.2} kg de mercurio en los reportes registrados.",
@@ -90,7 +119,7 @@ async fn chat(
         )
     } else if mensaje_normalizado.contains("anonim") {
         format!(
-            "El {:.1}% de los reportes fueron enviados de forma anónima (sin datos de contacto).",
+            "El {:.1}% de los reportes fueron enviados de forma anónima.",
             metricas.porcentaje_anonimos
         )
     } else if mensaje_normalizado.contains("total")
@@ -100,12 +129,51 @@ async fn chat(
         format!("Actualmente hay {} reporte(s) registrados en el sistema.", metricas.total_reportes)
     } else {
         format!(
-            "Puedo responder sobre el total de reportes ({}), el mercurio acumulado estimado ({:.2} kg), \
-             el porcentaje de reportes anónimos ({:.1}%) o las zonas protegidas afectadas ({}). \
-             Probá preguntando por alguno de esos temas.",
-            metricas.total_reportes, metricas.mercurio_acumulado_kg, metricas.porcentaje_anonimos, metricas.zonas_afectadas
+            "Puedo responder sobre reportes ({}), mercurio ({:.2} kg), \
+             reportes anónimos ({:.1}%) o zonas afectadas ({}).",
+            metricas.total_reportes, metricas.mercurio_acumulado_kg,
+            metricas.porcentaje_anonimos, metricas.zonas_afectadas
         )
     };
 
     Ok(RespuestaExitosa::ok(ChatRespuesta { respuesta }))
+}
+
+/// Llama a la API de Groq con el modelo Llama 3.3.
+async fn llamar_groq(api_key: &str, contexto: &str, mensaje: &str) -> Result<String, String> {
+    let body = serde_json::json!({
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": contexto},
+            {"role": "user", "content": mensaje}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 500
+    });
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post("https://api.groq.com/openai/v1/chat/completions")
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Error de conexión a Groq: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!("Groq respondió {status}: {text}"));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Error al parsear respuesta de Groq: {e}"))?;
+
+    json["choices"][0]["message"]["content"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Respuesta de Groq sin contenido".to_string())
 }

@@ -37,11 +37,15 @@ async fn main() {
         .expect("no se pudo conectar a la base de datos");
 
     // Las migraciones (migrations/0001_init.sql, etc.) se ejecutan
-    // automáticamente al arrancar el servidor.
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("no se pudieron ejecutar las migraciones");
+    // automáticamente al arrancar el servidor. Si fallan (por ejemplo,
+    // por un checksum desincronizado en producción), se loguea el error
+    // pero el servidor sigue arrancando en vez de crashear — asumimos
+    // que la base de datos ya está al día en ese caso. Si necesitas
+    // que el servidor SÍ se detenga ante un fallo de migración, revierte
+    // este bloque a un `.expect(...)`.
+    if let Err(error) = sqlx::migrate!().run(&pool).await {
+        tracing::error!(%error, "no se pudieron ejecutar las migraciones; el servidor arrancará de todas formas");
+    }
 
     let puerto = configuracion.puerto;
     let cors = construir_cors(&configuracion.cors_origenes);

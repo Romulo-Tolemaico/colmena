@@ -40,6 +40,33 @@ class AjustesScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
+            // Idioma
+            _SectionTitle(title: 'Idioma'),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonFormField<String>(
+                value: 'es',
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  icon: Icon(Icons.language_outlined),
+                ),
+                dropdownColor: theme.colorScheme.surface,
+                items: const [
+                  DropdownMenuItem(value: 'es', child: Text('Español')),
+                  DropdownMenuItem(value: 'en', child: Text('English')),
+                  DropdownMenuItem(value: 'qu', child: Text('Quechua (Runasimi)')),
+                ],
+                onChanged: (value) {},
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
             // Guía de seguridad
             _SectionTitle(title: 'Guía de seguridad'),
             const SizedBox(height: 10),
@@ -262,6 +289,34 @@ class _SecurityTip extends StatelessWidget {
             child: Text(text, style: TextStyle(fontSize: 13, color: Colors.red.shade700)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+class _LanguageChip extends StatelessWidget {
+  const _LanguageChip({required this.label, required this.selected});
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+        border: selected ? null : Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }

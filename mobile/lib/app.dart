@@ -103,7 +103,7 @@ class _MainShellState extends State<_MainShell> {
   final MobileApiService _api = MobileApiService(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.100.160:3000/api/v1',
+      defaultValue: 'https://colmena-1mlk.onrender.com/api/v1',
     ),
   );
 
@@ -155,7 +155,19 @@ class _MainShellState extends State<_MainShell> {
 
     if (result.isSuccess) {
       final codigoReporte = result.data!;
-      await _api.subirFotos(codigoReporte, photos);
+      
+      // Subir fotos - si falla, continuar de todos modos
+      final fotosResult = await _api.subirFotos(codigoReporte, photos);
+      if (fotosResult.isError && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reporte creado, pero fotos no se subieron: ${fotosResult.error}'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+
       final detalleResult = await _api.getReporteDetalle(codigoReporte);
 
       Registro registroResultado;
