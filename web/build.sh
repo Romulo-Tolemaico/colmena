@@ -22,6 +22,6 @@ API_URL="${API_BASE_URL:-https://colmena-api.onrender.com/api/v1}"
 
 echo "==> Compilando Flutter web con API_BASE_URL=$API_URL"
 
-flutter build web --release --dart-define=API_BASE_URL="$API_URL"
+flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL="$API_URL"
 
 echo "==> Build completado. Archivos en build/web/"
