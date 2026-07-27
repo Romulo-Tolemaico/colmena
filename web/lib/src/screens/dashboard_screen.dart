@@ -661,12 +661,7 @@ class _FilterBarState extends State<_FilterBar> {
   DateTimeRange? _selectedDateRange;
 
   List<String> get _zonas {
-    return widget.reportes
-        .map((r) => r.zonaProtegida.nombre)
-        .whereType<String>()
-        .toSet()
-        .toList()
-      ..sort();
+    return const ['Reserva Manuripi', 'Territorio Indígena Multiétnico II', 'Parque Nacional Madidi'];
   }
 
   void _pickDateRange() async {
