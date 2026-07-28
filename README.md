@@ -317,12 +317,5 @@ colmena/
 
 ---
 
-## Equipo
 
-Desarrollado para el Hackathon Colmena 2026.
 
----
-
-## Licencia
-
-Proyecto académico / hackathon. Todos los derechos reservados.
