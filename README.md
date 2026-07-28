@@ -223,13 +223,13 @@ flutter run
 
 **App Móvil:**
 
-<!-- Pegar imagen aquí -->
+<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/8d000f80-ea6e-4f36-b9d5-b2fa64e69634" />
+
+<img width="720" height="1600" alt="image" src="https://github.com/user-attachments/assets/3fc2947e-107b-4ab0-a381-7ce54fed8409" />
 
 **Panel Web:**
 
-<!-- Pegar imagen aquí -->
-
----
+<img width="1919" height="946" alt="image" src="https://github.com/user-attachments/assets/29754ef2-4396-469b-aee4-164663c6194d" />
 
 ## Acceso a la plataforma
 
