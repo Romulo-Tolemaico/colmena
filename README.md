@@ -203,6 +203,55 @@ flutter run
 
 ---
 
+## Demo en vivo
+
+### Capturas
+
+**App Móvil:**
+
+<!-- Pegar imagen aquí -->
+
+**Panel Web:**
+
+<!-- Pegar imagen aquí -->
+
+---
+
+## Demo en vivo
+
+### Capturas
+
+**App Móvil:**
+
+<!-- Pegar imagen aquí -->
+
+**Panel Web:**
+
+<!-- Pegar imagen aquí -->
+
+---
+
+## Acceso a la plataforma
+
+| Plataforma | URL | Notas |
+|-----------|-----|-------|
+| Panel Web | https://colmena-1.onrender.com/ | Crear un usuario para monitorear reportes |
+| API Backend | https://colmena-1mlk.onrender.com/api/v1 | Endpoints REST |
+| App Móvil (APK) | [Descargar APK](https://drive.google.com/file/d/18QMdPox62MKUb3F--vTEBmno43l9mxfL/view?usp=sharing) | Instalar en Android |
+
+### Para usar el Panel Web:
+1. Entrar a https://colmena-1.onrender.com/
+2. Crear una cuenta desde "Crear cuenta" (rol Analista o Administrador)
+3. Iniciar sesión para acceder al dashboard de monitoreo
+
+### Para usar la App Móvil:
+1. Descargar el APK desde el enlace
+2. Instalar en el celular (activar "Fuentes desconocidas")
+3. Abrir y seguir el onboarding
+4. Crear un reporte con fotos + GPS
+
+---
+
 ## Deploy en producción
 
 | Servicio | URL |
